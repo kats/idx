@@ -1,0 +1,8 @@
+webserver.py
+------------
+    Simple web server to porcess search requests. For now uses listen port 
+8092 on localhost. You can use __PORT__ at line 4 to redefine it.
+
+IndexServer.py
+--------------
+    Dummy implementation of the IndexServer.search() routine.

@@ -65,4 +65,8 @@ namespace Kontur.WebPFR
 		private readonly int contentLen;
 		private readonly long kansoOffset;
 	}
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 59e3fd3072b2855171e59e7376939c96a1599d53

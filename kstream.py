@@ -6,7 +6,8 @@ class kstream:
 		self.filename = filename
 
 	def get_next_chunk_loc(self):
-		conn = httplib.HTTPConnection("kanso-master.kepref.kontur", 22222)
+		#conn = httplib.HTTPConnection("kanso-master.kepref.kontur", 22222)
+		conn = httplib.HTTPConnection("localhost", 22222)
 		params = urllib.urlencode({"method":"read", "offset":self.off})
 		conn.request("GET", "/" + self.filename + "?" + params)
 		resp = str(conn.getresponse().read()).split(";")

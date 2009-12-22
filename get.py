@@ -72,6 +72,5 @@ def read_structs(buf):
 		else: 
 			off += 1
 
-#for txn in read_structs(open("a", "rb").read()):
 for txn in read_structs(kstream("pfr/transactions").read()):
 	print txn[0].orgId

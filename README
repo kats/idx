@@ -6,3 +6,11 @@ webserver.py
 IndexServer.py
 --------------
     Dummy implementation of the IndexServer.search() routine.
+
+createIndex.py
+--------------
+	Script to create SQLite index DB.
+
+fillFakeIndex.py
+----------------
+	Simplest example that fills index DB with fake data.

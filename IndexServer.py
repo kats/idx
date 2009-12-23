@@ -1,19 +1,19 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
-class IndexSearchResult:
-    def __init__(self, data):
-        self.data = data
-    def __unicode__(self):
-        return self.data
-    def __str__(self):
-        return self.__unicode__()
+__CONNECTION_STRING__ = u'index.sqlite'
+from sqlite3 import connect
 
 class IndexServer:
+    def __init__(self):
+        self.connection = connect(__CONNECTION_STRING__)
+
     def search(self, query):
-        return [IndexSearchResult('field 1\tfield 2\tfield 3\tfield 4\n'), \
-                IndexSearchResult('field 1\tfield 2\tfield 3\tfield 4\n'), \
-                IndexSearchResult('field 1\tfield 2\tfield 3\tfield 4\n'), \
-                IndexSearchResult('field 1\tfield 2\tfield 3\tfield 4\n')] 
+        cursor = self.connection.cursor()
+        id_hi = query >> 64
+        id_low = query & 0xFFFFFFFFFFFFFFFF
+        cursor.execute('select * from pfrTransactions where (orgId_hi = %d) and (orgId_low = %d) order by dcId_hi, dcId_low, transactionTime' % (id_hi, id_low))
+        res = cursor.fetchall()
+        cursor.close()
 
-
+        return res

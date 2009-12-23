@@ -14,7 +14,7 @@ class H(BaseHTTPRequestHandler):
 		else:
 			self.send_response(200)
 			self.end_headers()
-			self.wfile.write(open(chunk).read())
+			self.wfile.write(open(chunk, "rb").read())
 
 if __name__ == "__main__":
     try:

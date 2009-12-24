@@ -17,20 +17,20 @@ class IndexSearchRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
             id = re.search("orgId=([^&]*)", self.path)
-            id = id.group(1)
-            # big-endian string expected
-            id = uuid.UUID(id)
+            if not id:
+                self.send_error(404, "Bad request: %s" % self.path)
+                return
+            id = uuid.UUID(id.group(1))
 
             self.send_response(200)
             self.send_header('Content-type', 'text/plain')
+            self.send_header('Content-Encoding', 'utf-8')
             self.end_headers()
 
-            for sr in IdxServer.search(id.int):
-                self.wfile.write(sr)
-                self.wfile.write('\n')
+            self.wfile.write(IdxServer.search(id.int).encode('utf-8'))
         except:
             # Error ether in parsing or param.
-            self.send_error(404, "Unexpected error: %s" % sys.exc_info()[0])
+            self.send_error(404, "Unexpected error: %s\n%s\n%s" % sys.exc_info())
             raise
 
 def main():

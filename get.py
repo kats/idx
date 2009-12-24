@@ -29,6 +29,12 @@ def read_structs(buf, off=0):
 			continue
 		(o, txn) = res
 		yield res[1]
-		
+
+from IndexServer import *
+updater = IndexServerUpdater("index.sqlite")
 for txn in read_structs(open("fake_kanso/chunks/4c44ed6d-4b46-4093-93f1-6b29a95e08ea", "rb").read()):
-	print txn
+    #for txn in read_structs(kstream("-path-to-file-here-").read()):
+    #	print txn
+    updater.insert_record(txn)
+    #print txn[0].orgId
+updater.commit()

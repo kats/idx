@@ -1,7 +1,8 @@
 from uuid import UUID
 from struct import unpack_from, calcsize
 from kstream import *
-from read_structs import *
+from read_structs import read_structs
+
 
 __label__ = "===="
 
@@ -33,8 +34,9 @@ def read_structs(buf, off=0):
 from IndexServer import *
 updater = IndexServerUpdater("index.sqlite")
 for txn in read_structs(open("fake_kanso/chunks/4c44ed6d-4b46-4093-93f1-6b29a95e08ea", "rb").read()):
-    #for txn in read_structs(kstream("-path-to-file-here-").read()):
-    #	print txn
-    updater.insert_record(txn)
+#for txn in read_structs(kstream("kanso://kanso-master.kepref.kontur/pfr/transactions").read()):
+    #print txn
     #print txn[0].orgId
+    updater.insert_record(txn)
 updater.commit()
+

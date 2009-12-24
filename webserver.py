@@ -11,7 +11,7 @@ import uuid
 from IndexServer import IndexServer
 
 if __name__ == '__main__':
-    IdxServer = IndexServer()
+    IdxServer = IndexServer("index.sqlite")
 
 class IndexSearchRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):

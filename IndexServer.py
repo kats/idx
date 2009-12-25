@@ -33,10 +33,12 @@ class IndexServer:
         return res
 
 class IndexServerUpdater:
-    def __init__(self, connectionString, offset=0):
+    def __init__(self, connectionString):
         self.connection = connect(connectionString)
+        self.__purge_state_table()
         self.pcounter = 0
-        self.offset = 0
+        self.offset = self.__get_max_offset()
+        print self.offset
     def __format_signatures(self, signatures):
         res = ""
         for s in signatures:
@@ -47,9 +49,13 @@ class IndexServerUpdater:
         for d in documents:
             res += '%s\t%d\t%d\t"%s"\t%d\t%d\n' % (d.id, d.type, d.formKey, d.fileName.decode('utf-8'), d.kansoOffset, d.contentLen)
         return res
+    def __get_max_offset(self):
+        o = self.connection.execute('select max(offset) from state').fetchone()[0]
+        return o if o <> None else 0
     def __insert_new_offset(self):
         self.connection.execute('insert into state(offset) values(?)', (self.offset,))
-        
+    def __purge_state_table(self):
+        self.connection.execute('delete from state where offset not in (select max(offset) from state)').fetchall()
     def insert_record(self, rec):
         o, tnx = rec
         r, docs, signs = tnx

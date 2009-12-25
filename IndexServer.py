@@ -33,7 +33,6 @@ class IndexServerUpdater:
         self.__purge_state_table()
         self.pcounter = 0
         self.offset = self.__get_max_offset()
-        print self.offset
     def __format_signatures(self, signatures):
         res = ""
         for s in signatures:
@@ -86,4 +85,3 @@ class IndexServerUpdater:
     def commit(self):
         self.__insert_new_offset()
         self.connection.commit()
-        print "Commit with offset: %d" % self.offset

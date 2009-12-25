@@ -13,7 +13,7 @@ cursor.execute('''drop table if exists pfrTransactions''')
 cursor.execute('''vacuum''')
 
 cursor.execute('''
-        create table state(offeset integer)
+        create table state(offset integer)
         ''')
 cursor.execute('''
         create table pfrTransactions(

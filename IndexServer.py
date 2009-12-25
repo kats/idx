@@ -21,14 +21,9 @@ class IndexServer:
         resData = cursor.fetchall()
         cursor.close()
         res = ""
-        a = 1
         for row in resData:
-            #print row
             r = '%s\t%s\t%d\t%d\t"%s"\t%d\t%d\t%d\t\n\n%s\n%s\n\n' % \
                 ((UUID(int=combineInt128(row[0], row[1])), UUID(int=combineInt128(row[2], row[3]))) + row[4:])
-            if a == 1:
-                print r
-                a = 0
             res += r
         return res
 

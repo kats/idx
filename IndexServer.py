@@ -47,7 +47,8 @@ class IndexServerUpdater:
             res += '%s\t%d\t%d\t"%s"\t%d\t%d\n' % (d.id, d.type, d.formKey, d.fileName.decode('utf-8'), d.kansoOffset, d.contentLen)
         return res
     def insert_record(self, rec):
-        r = rec[0]
+        o, tnx = rec
+        r, docs, signs = tnx
         cursor = self.connection.cursor()
         cursor.execute('''
            insert into pfrTransactions(
@@ -68,8 +69,8 @@ class IndexServerUpdater:
                 r.accYear,
                 r.provId,
                 r.corrType,
-                self.__format_documents(rec[1]),
-                self.__format_signatures(rec[2]))
+                self.__format_documents(docs),
+                self.__format_signatures(signs))
         )
         cursor.close()
         self.pcounter += 1

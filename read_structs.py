@@ -71,5 +71,5 @@ def read_structs(buf, off=0):
 		if not res: 
 			o += 1
 			continue
-		(o, txn) = res
-		yield res[1]
+		o = res[0]
+		yield res

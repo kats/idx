@@ -33,9 +33,10 @@ class IndexServer:
         return res
 
 class IndexServerUpdater:
-    def __init__(self, connectionString):
+    def __init__(self, connectionString, offset=0):
         self.connection = connect(connectionString)
         self.pcounter = 0
+        self.offset = 0
     def __format_signatures(self, signatures):
         res = ""
         for s in signatures:
@@ -46,6 +47,9 @@ class IndexServerUpdater:
         for d in documents:
             res += '%s\t%d\t%d\t"%s"\t%d\t%d\n' % (d.id, d.type, d.formKey, d.fileName.decode('utf-8'), d.kansoOffset, d.contentLen)
         return res
+    def __insert_new_offset(self):
+        self.connection.execute('insert into state(offset) values(?)', (self.offset,))
+        
     def insert_record(self, rec):
         o, tnx = rec
         r, docs, signs = tnx
@@ -73,9 +77,12 @@ class IndexServerUpdater:
                 self.__format_signatures(signs))
         )
         cursor.close()
+        self.offset = o
         self.pcounter += 1
         if self.pcounter == 500:
             self.pcounter = 0
-            self.connection.commit()
+            self.commit()
     def commit(self):
+        self.__insert_new_offset()
         self.connection.commit()
+        print "Commit with offset: %d" % self.offset

@@ -49,7 +49,6 @@ class Snapshot:
         return latest
 
     def remove(snapshotName):
-        name = join(self.__dstDir, snapshotName)
-        if isfile(name):
-            remove(name)
+        if isfile(snapshotName):
+            remove(snapshotName)
 

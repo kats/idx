@@ -2,25 +2,16 @@
 #-*- coding: utf-8 -*-
 
 from uuid import UUID as uuid_UUID
+from struct import unpack_from
 
 class UUID(uuid_UUID):
     def __init__(self, bytes_le=None, int=None):
         if bytes_le is not None:
-            #0 8 16 24 32 40 48 56 64 72 80 88 96 104 112 120
-            int = (ord(bytes_le[3]) << 120) + \
-                    (ord(bytes_le[2]) << 112) + \
-                    (ord(bytes_le[1]) << 104) + \
-                    (ord(bytes_le[0]) << 96) + \
-                    (ord(bytes_le[5]) << 88) + \
-                    (ord(bytes_le[4]) << 80) + \
-                    (ord(bytes_le[7]) << 72) + \
-                    (ord(bytes_le[6]) << 64) + \
-                    (ord(bytes_le[8]) << 56) + \
-                    (ord(bytes_le[9]) << 48) + \
-                    (ord(bytes_le[10]) << 40) + \
-                    (ord(bytes_le[11]) << 32) + \
-                    (ord(bytes_le[12]) << 24) + \
-                    (ord(bytes_le[13]) << 16) + \
-                    (ord(bytes_le[14]) << 8) + \
-                    ord(bytes_le[15])
+            bytes_le = (bytes_le[6] + bytes_le[7] + bytes_le[4] + bytes_le[5] +
+                     bytes_le[0] + bytes_le[1] + bytes_le[2] + bytes_le[3] +
+                     bytes_le[15] + bytes_le[14] + bytes_le[13] + bytes_le[12] +
+                     bytes_le[11] + bytes_le[10] + bytes_le[9] + bytes_le[8])
+            
+            ints = unpack_from("=QQ", bytes_le)
+            int = (ints[0] << 64) + ints[1]
         self.__dict__['int'] = int

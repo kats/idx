@@ -1,6 +1,6 @@
 from struct import unpack_from, calcsize
 from collections import namedtuple
-from uuid import UUID
+from guid import UUID
 
 TxnHead = namedtuple("TxnHead", "orgId dcId time type upfrCode accYear provId corrType")
 Doc = namedtuple("Doc", "id type formKey fileName kansoOffset contentLen")
@@ -18,7 +18,6 @@ def __hash(bytes):
 	if l % 4 == 3:
 		h ^= unpack_from("=i", bytes+"\x00", l-3)[0]
 	return h
-
 def __read_head(buf, off):
 	layout = "=4x16s16sQix7siii"
 	t = unpack_from(layout, buf, off)

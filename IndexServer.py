@@ -20,19 +20,21 @@ class IndexServer:
             order by dcId_hi, dcId_low, transactionTime''' % splitInt128(query))
         resData = cursor.fetchall()
         cursor.close()
-        res = ""
         for row in resData:
             r = '%s\t%s\t%d\t%d\t"%s"\t%d\t%d\t%d\t\n\n%s\n%s\n\n' % \
                 ((UUID(int=combineInt128(row[0], row[1])), UUID(int=combineInt128(row[2], row[3]))) + row[4:])
-            res += r
-        return res
+            yield r
 
+# TODO: Add loging
 class IndexServerUpdater:
     def __init__(self, connectionString):
+        self.__connectionString = connectionString
         self.connection = connect(connectionString)
+        self.connection.execute('PRAGMA synchronous=OFF')
         self.__purge_state_table()
         self.pcounter = 0
         self.offset = self.__get_max_offset()
+        self.begin()
     def __format_signatures(self, signatures):
         res = ""
         for s in signatures:
@@ -53,8 +55,7 @@ class IndexServerUpdater:
     def insert_record(self, rec):
         o, tnx = rec
         r, docs, signs = tnx
-        cursor = self.connection.cursor()
-        cursor.execute('''
+        self.connection.execute('''
            insert into pfrTransactions(
            orgId_hi, orgId_low,
             dcId_hi, dcId_low,
@@ -76,12 +77,15 @@ class IndexServerUpdater:
                 self.__format_documents(docs),
                 self.__format_signatures(signs))
         )
-        cursor.close()
         self.offset = o
         self.pcounter += 1
-        if self.pcounter == 500:
+        # TODO: To config parameter
+        if self.pcounter == 50000:
             self.pcounter = 0
             self.commit()
+            self.begin()
+    def begin(self):
+        self.connection.execute('BEGIN TRANSACTION')
     def commit(self):
         self.__insert_new_offset()
         self.connection.commit()

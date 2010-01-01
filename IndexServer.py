@@ -20,22 +20,21 @@ class IndexServer:
             order by dcId_hi, dcId_low, transactionTime''' % splitInt128(query))
         resData = cursor.fetchall()
         cursor.close()
-        res = ""
-        a = 1
         for row in resData:
-            #print row
             r = '%s\t%s\t%d\t%d\t"%s"\t%d\t%d\t%d\t\n\n%s\n%s\n\n' % \
                 ((UUID(int=combineInt128(row[0], row[1])), UUID(int=combineInt128(row[2], row[3]))) + row[4:])
-            #if a == 1:
-            #print r
-            #    a = 0
-            res += r
-        return res
+            yield r
 
+# TODO: Add loging
 class IndexServerUpdater:
     def __init__(self, connectionString):
+        self.__connectionString = connectionString
         self.connection = connect(connectionString)
+        self.connection.execute('PRAGMA synchronous=OFF')
+        self.__purge_state_table()
         self.pcounter = 0
+        self.offset = self.__get_max_offset()
+        self.begin()
     def __format_signatures(self, signatures):
         res = ""
         for s in signatures:
@@ -46,10 +45,17 @@ class IndexServerUpdater:
         for d in documents:
             res += '%s\t%d\t%d\t"%s"\t%d\t%d\n' % (d.id, d.type, d.formKey, d.fileName.decode('utf-8'), d.kansoOffset, d.contentLen)
         return res
+    def __get_max_offset(self):
+        o = self.connection.execute('select max(offset) from state').fetchone()[0]
+        return o if o <> None else 0
+    def __insert_new_offset(self):
+        self.connection.execute('insert into state(offset) values(?)', (self.offset,))
+    def __purge_state_table(self):
+        self.connection.execute('delete from state where offset not in (select max(offset) from state)').fetchall()
     def insert_record(self, rec):
-        r = rec[0]
-        cursor = self.connection.cursor()
-        cursor.execute('''
+        o, tnx = rec
+        r, docs, signs = tnx
+        self.connection.execute('''
            insert into pfrTransactions(
            orgId_hi, orgId_low,
             dcId_hi, dcId_low,
@@ -68,13 +74,18 @@ class IndexServerUpdater:
                 r.accYear,
                 r.provId,
                 r.corrType,
-                self.__format_documents(rec[1]),
-                self.__format_signatures(rec[2]))
+                self.__format_documents(docs),
+                self.__format_signatures(signs))
         )
-        cursor.close()
+        self.offset = o
         self.pcounter += 1
-        if self.pcounter == 500:
+        # TODO: To config parameter
+        if self.pcounter == 50000:
             self.pcounter = 0
-            self.connection.commit()
+            self.commit()
+            self.begin()
+    def begin(self):
+        self.connection.execute('BEGIN TRANSACTION')
     def commit(self):
+        self.__insert_new_offset()
         self.connection.commit()

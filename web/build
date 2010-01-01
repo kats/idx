@@ -1,1 +1,1 @@
-gmcs *.cs -t:library -r:System.Web -out:bin/web.dll
+gmcs *.cs -out:bin/web.dll -target:library -r:System.Web

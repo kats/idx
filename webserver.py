@@ -27,9 +27,9 @@ class IndexSearchRequestHandler(BaseHTTPRequestHandler):
             self.send_header('Content-Encoding', 'utf-8')
             self.end_headers()
 
-            self.wfile.write(IdxServer.search(id.int).encode('utf-8'))
+            for r in IdxServer.search(id.int):
+                self.wfile.write(r.encode('utf-8'))
         except:
-            # Error ether in parsing or param.
             self.send_error(404, "Unexpected error: %s\n%s\n%s" % sys.exc_info())
             raise
 

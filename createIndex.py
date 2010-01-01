@@ -1,19 +1,22 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
-__CONNECTION_STRING__ = u'index.sqlite'
+__CONNECTION_STRING = u'index.sqlite'
+
+from os import remove
+import os.path
+
+if os.path.isfile(__CONNECTION_STRING):
+    remove(__CONNECTION_STRING)
 
 from sqlite3 import connect
 
-connection = connect(__CONNECTION_STRING__)
+connection = connect(__CONNECTION_STRING)
 cursor = connection.cursor()
-cursor.execute('''drop table if exists state''')
-cursor.execute('''drop index if exists pfrTransactions_index''')
-cursor.execute('''drop table if exists pfrTransactions''')
-cursor.execute('''vacuum''')
+#cursor.execute('PRAGMA page_size=32768;')
 
 cursor.execute('''
-        create table state(offeset integer)
+        create table state(offset integer)
         ''')
 cursor.execute('''
         create table pfrTransactions(
@@ -31,6 +34,10 @@ cursor.execute('''
             documents text,
             signatures text
         )
+        ''')
+
+cursor.execute('''
+        create index pfrTransactions_index on pfrTransactions(orgId_hi, orgId_low)
         ''')
 
 connection.commit()

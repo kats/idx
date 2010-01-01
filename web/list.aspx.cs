@@ -76,7 +76,6 @@ namespace Kontur.WebPFR
 			int i = 0;
 			foreach(var t in dcs)
 			{
-				if(i++ >= 20) break;
 				DCInfo dc = GetDCInfo(t);
 				buf.AppendFormat(
 					"<tr><td class='status'>{0}</td><td>{1}</td><td>{2}</td><td>{3:dd.MM.yyyy}</td></tr>",
@@ -214,7 +213,7 @@ namespace Kontur.WebPFR
 
 		IEnumerable<PfrTransaction> Rows()
 		{
-			using(var file = new StreamReader("resp"))
+			using(var file = new StreamReader("resp3"))
 			{
 				string[] head;
 				while((head = ReadHead(file)) != null)

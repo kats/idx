@@ -24,7 +24,7 @@
 			</tbody>
 		</table>
 		<div id="pages">
-			<strong><%=Count%> <%=Word()%>:</strong>
+			<strong><%=PageCount%> <%=Word()%>:</strong>
 			<div id="arrows">
 				<%=PrevHref()%>
 				<%=NextHref()%>

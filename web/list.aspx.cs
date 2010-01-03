@@ -27,18 +27,33 @@ namespace Kontur.WebPFR
 	public partial class list : System.Web.UI.Page
 	{
 		protected string Url = "list.aspx?";
-		protected int Count = 10;
+		protected int PageCount = 1;
 		protected int page;
 		protected const int page_size = 20;
+		
+		List<DCInfo> dcs;
 
 		protected void Page_Load(object sender, EventArgs e)
 		{
 			if(!int.TryParse(Request["page"], out page)) page = 0;
+			dcs = GetDCs();
+			dcs.Sort((a,b) => b.Time.CompareTo(a.Time));
+			PageCount = dcs.Count() / page_size;
+		}
+
+		private List<DCInfo> GetDCs()
+		{
+			var grps = from txn in Rows() 
+				group txn by txn.DcId into grp 
+				select grp;
+			var dcs = new List<DCInfo>();
+			foreach(var grp in grps) dcs.Add(GetDCInfo(grp));
+			return dcs;
 		}
 
 		protected string Word()
 		{
-			int c = Count;
+			int c = PageCount;
 			int l2 = c - c/100*100;
 			if(l2 >= 5 && l2 <= 20) return "страниц";
 			int l1 = l2 - l2/10*10;	
@@ -56,7 +71,7 @@ namespace Kontur.WebPFR
 
 		protected string NextHref()
 		{
-			if(page < Count-1)
+			if(page < PageCount-1)
 				return string.Format("<a href='{0}'>Следующая</a><span>&rarr;</span>", Page(page+1));
 			return string.Format("<a class='no'>Следующая</a><span class='no'>&rarr;</span>");
 		}
@@ -69,14 +84,10 @@ namespace Kontur.WebPFR
 		protected string GetRows()
 		{
 			var buf = new StringBuilder();
-			var dcs = from txn in Rows() 
-				group txn by txn.DcId into grp 
-				select grp;
-			// TODO: нормальный пейджинг
-			int i = 0;
-			foreach(var t in dcs)
+			for(int i = Math.Max(page*page_size, 0); 
+					i < Math.Min((page+1)*page_size, dcs.Count()); ++i)
 			{
-				DCInfo dc = GetDCInfo(t);
+				var dc = dcs[i];
 				buf.AppendFormat(
 					"<tr><td class='status'>{0}</td><td>{1}</td><td>{2}</td><td>{3:dd.MM.yyyy}</td></tr>",
 					 StatusToText(dc.Status), 
@@ -107,7 +118,7 @@ namespace Kontur.WebPFR
 			return string.Format("<a href='dc.aspx?dcId={0}'>{1}</a>{2}",
 				dc.DcId, 
 				TypeToString(dc.Type),
-				dc.Type == DCType.adv ? CorrYearStr(dc.Corr, dc.Year) : "");
+				dc.Type == DCType.adv ? CorrYearStr(dc.Corr, dc.Year) : YearStr(dc.Year));
 		}
 
 		string CorrYearStr(CorrectionType c, int y)
@@ -115,6 +126,11 @@ namespace Kontur.WebPFR
 			return string.Format(" ({0}за {1} год)", 
 				c == CorrectionType.Abrogative ? "отменяющие " : 
 				c == CorrectionType.Corrective ? "корректирующие " : "", y);
+		}
+
+		string YearStr(int y)
+		{
+			return string.Format(" (за {0} год)", y);
 		}
 
 		string TypeToString(DCType t)

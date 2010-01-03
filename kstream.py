@@ -1,10 +1,10 @@
 import httplib, urllib, string
-import re
+import re, random
 
 def open(uri):
     return kstream(uri)
 
-def __parse_url(uri):
+def _parse_url(uri):
     scheme = netloc = path = port = "" 
     # scheme
     i = string.find(uri, "://")
@@ -34,6 +34,8 @@ class kstream:
     def get_next_chunk_loc(self):
         scheme, netloc, port, path = _parse_url(self.uri)
         if scheme != "kanso": raise "unknown scheme, use kanso://"
+        if port == "": port = 22222
+
         conn = httplib.HTTPConnection(netloc, port)
         params = urllib.urlencode({"method":"read", "offset":self.off})
         conn.request("GET", "/" + path + "?" + params)
@@ -41,7 +43,8 @@ class kstream:
         return (resp[0], resp[1:])
 
     def read_chunk(self, chunk_id, servers):
-        for server in random.shuffle(servers):
+        random.shuffle(servers)
+        for server in servers:
             server = server.split(":")
             try:
                 conn = httplib.HTTPConnection(server[0], server[1].split(",")[1])

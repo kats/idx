@@ -4,7 +4,7 @@ from sys import argv
 
 class H(BaseHTTPRequestHandler):
     def do_GET(self):
-		chunk = "chunks" + self.path
+		chunk = "fake_kanso/chunks" + self.path
 		if not path.exists(chunk):
 			self.send_response(404)
 			self.end_headers()

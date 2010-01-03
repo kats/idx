@@ -13,9 +13,9 @@
 			<a href="#" id="help">Справка</a>
 		</div>
 		<ul id="tabs" class="tabs">
-			<li class="active"><a>Отправленные</a>
-			<li><a href="#">Отправить сведения &hellip;</a>
-			<li><a href="#">Регистрационные данные</a>
+			<li class="active r-tab"><a>Отправленные</a>
+			<li class="r-int"><a href="#">Отправить сведения &hellip;</a>
+			<li class="r-cnv"><a href="#">Регистрационные данные</a>
 		</ul>
 		<div id="content"><asp:ContentPlaceHolder id="content" runat="server"></asp:ContentPlaceHolder></div>
 	</body>

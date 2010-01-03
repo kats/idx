@@ -1,9 +1,6 @@
-#!/usr/bin/env python
-
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 from os import path
-
-__port__ = 8898
+from sys import argv
 
 class H(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -16,9 +13,6 @@ class H(BaseHTTPRequestHandler):
 			self.end_headers()
 			self.wfile.write(open(chunk, "rb").read())
 
-if __name__ == "__main__":
-    try:
-        server = HTTPServer(('', __port__), H)
-        server.serve_forever()
-    except KeyboardInterrupt:
-        server.socket.close()
+def run(port):
+    server = HTTPServer(('', port), H)
+    server.serve_forever()

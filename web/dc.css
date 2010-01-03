@@ -1,0 +1,9 @@
+/* layout */
+#content {padding:0 20px; width:1000px}
+#descr {padding-top:20px}
+#status {margin-top:6px; padding:10px 20px}
+
+/* look & feel */
+#descr {font-size:18px}
+#status.positive {background-color:#d1e7c1}
+#status.negative {background-color:#ffacac}

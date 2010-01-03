@@ -1,0 +1,13 @@
+/* layout */
+body {margin:0; padding:0;}
+#head {padding-left:20px; padding-bottom:6px; padding-top:6px}
+#head #help {position:absolute; right:20px; padding:0px 0 5px 22px}
+#tabs {padding-left:20px; padding-top:12px}
+
+/* look & feel */
+body {font:13px Tahoma, sans-serif;}
+a, a:link, a:hover, a:visited {color:#214fa7;}
+#head {background-color:#485577; color:#fff}
+#head a {color:#fff}
+#head #help {background:url(img/h1.png) no-repeat 0 top}
+#tabs {background-color:#ededed}

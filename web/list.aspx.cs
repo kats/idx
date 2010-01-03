@@ -6,24 +6,6 @@ using System;
 
 namespace Kontur.WebPFR
 {
-	enum DCStatus {Sent, Acc_Sign, Rej_Sign, Acc_Fin, Rej_Fin, Received, Error}
-	enum DCType {adv, dsv, dsvReg, zpf, zvuk}
-	class DCInfo
-	{
-		public DCInfo(DCStatus status, string upfr, DCType type, Guid dcId, DateTime time, CorrectionType corr, int year) 
-		{
-			Status=status; Upfr=upfr; Type=type; DcId=dcId; Time=time; Corr=corr; Year=year;
-		}
-
-		public string Upfr;
-		public Guid DcId;
-		public DateTime Time;
-		public CorrectionType Corr;
-		public int Year;
-		public DCStatus Status;
-		public DCType Type;
-	}
-
 	public partial class list : System.Web.UI.Page
 	{
 		protected string Url = "list.aspx?";
@@ -115,35 +97,10 @@ namespace Kontur.WebPFR
 
 		string LinkText(DCInfo dc)
 		{
-			return string.Format("<a href='dc.aspx?dcId={0}'>{1}</a>{2}",
+			return string.Format("<a href='dc.aspx?dcId={0}'>{1}</a> ({2})",
 				dc.DcId, 
-				TypeToString(dc.Type),
-				dc.Type == DCType.adv ? CorrYearStr(dc.Corr, dc.Year) : YearStr(dc.Year));
-		}
-
-		string CorrYearStr(CorrectionType c, int y)
-		{
-			return string.Format(" ({0}за {1} год)", 
-				c == CorrectionType.Abrogative ? "отменяющие " : 
-				c == CorrectionType.Corrective ? "корректирующие " : "", y);
-		}
-
-		string YearStr(int y)
-		{
-			return string.Format(" (за {0} год)", y);
-		}
-
-		string TypeToString(DCType t)
-		{
-			switch(t)
-			{
-				case DCType.adv: return "Годовая отчетность"; 
-				case DCType.dsv: return "Заявление о вступлении в систему добровольного страхования";
-				case DCType.dsvReg: return "Реестр лиц, за которых перечислены дополнительные страховые взносы";
-				case DCType.zpf: return "Заявление о переходе в НПФ";
-				case DCType.zvuk: return "Заявление о выборе управляющей компании";
-				default: return "";
-			}
+				fn.TypeToString(dc.Type),
+				fn.CorrYearString(dc.Type, dc.Corr, dc.Year));
 		}
 
 		DCInfo GetDCInfo(IEnumerable<PfrTransaction> txns)

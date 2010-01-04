@@ -10,7 +10,6 @@ namespace Kontur.WebPFR
 		protected Guid dcId;
 		protected DCInfo dc;
 
-
 		protected void Page_Load(object sender, EventArgs e)
 		{
 			dcId = new Guid(Request["dcId"]);
@@ -25,169 +24,40 @@ namespace Kontur.WebPFR
 				dc.Upfr, dc.Time, dc.Time);
 		}
 
-		// TODO: всё не так
-		protected bool Positive { get {return 
-			dc.Status == DCStatus.Acc_Fin || dc.Status == DCStatus.Acc_Sign;}}
+		// TODO (kats): controls instead of html generation.
+		protected string StatusText()
+		{
+			switch(dc.Progress)
+			{
+				case TransactionType.report: 
+					return "<span>Сведения отправлены в УПФР.</span><strong>Ожидайте подтверждение о получении.</strong>";
+				case TransactionType.reportAcknowledgement: 
+					return "<span>Сведения получены УПФР.</span><strong>Ожидайте ответ из УПФР.</strong>";
+				case TransactionType.protocol: 
+					return string.Format("<span>Сведения проверены УПФР: получен протокол приема.</span><strong>Сведения {0}. Подпишите протокол приема и приложения.</strong>",
+							dc.Positive ? "приняты" : "не приняты");
+				case TransactionType.protocolReceipt: 
+					return string.Format("<span>Сведения проверены УПФР: получен протокол приема.</span><strong>Сведения {0}. Передача сведений завершена.</strong>",
+							dc.Positive ? "приняты" : "не приняты");
+				default: return "<span></span><strong></strong>";
+			}
+		}
+
+		protected string StatusClass()
+		{
+			switch(dc.Progress)
+			{
+				case TransactionType.report: return "neutral";
+				case TransactionType.reportAcknowledgement: return "neutral";
+				case TransactionType.protocol: 
+				case TransactionType.protocolReceipt: return dc.Positive ? "positive" : "negative";
+				default: return "negative";
+			}
+		}
 
 		DCInfo GetDC(Guid dcId)
 		{
-			return GetDCInfo(
-				from txn in GetTransactions() where txn.DcId == dcId select txn);
-		}
-		
-		IEnumerable<PfrTransaction> GetTransactions()
-		{
-			using(var file = new StreamReader("resp3"))
-			{
-				string[] head;
-				while((head = ReadHead(file)) != null)
-				{
-					List<PfrDocument> docs = ReadDocs(file);
-					List<PfrSignature> signs = ReadSigns(file);
-					if(ReadTail(file)) 
-					{
-						yield return new PfrTransaction(
-							new Guid(head[0]), new Guid(head[1]),
-							new DateTime(Int64.Parse(head[2])),
-							(TransactionType)Enum.Parse(typeof(TransactionType), head[3]),
-							head[4].Trim(new char[]{'\"'}),
-							Int32.Parse(head[5]),
-							Int32.Parse(head[6]),
-							(CorrectionType)Enum.Parse(typeof(CorrectionType), head[7]),
-							docs, signs);
-					}
-				}
-			}
-		}
-
-		DCInfo GetDCInfo(IEnumerable<PfrTransaction> txns)
-		{
-			var dcId = txns.First().DcId;
-			var upfr = txns.First().UpfrCode;
-			var corr = txns.First().CorrectionType;
-			var year = txns.First().AccountingYear;
-			var time = txns.Last().TransactionTime;
-			var type = CalcType(txns);
-			var status = CalcStatus(txns);
-			return new DCInfo(status, upfr, type, dcId, time, corr, year);
-		}
-
-		DCStatus CalcStatus(IEnumerable<PfrTransaction> txns)
-		{
-			bool has_rep=false, has_ack=false, has_prot=false, has_rec=false;
-			bool positive=false;
-			int doc_hash=0, sign_hash=0;
-			foreach(var txn in txns)
-			{
-				if(txn.Type == TransactionType.registrationSendError) return DCStatus.Error;
-				if(txn.Type == TransactionType.protocolReceiptSendError) return DCStatus.Error;
-				if(txn.Type == TransactionType.reportSendError) return DCStatus.Error;
-				if(txn.Type == TransactionType.report) has_rep = true;
-				if(txn.Type == TransactionType.reportAcknowledgement) has_ack = true;
-				if(txn.Type == TransactionType.protocol) has_prot = true;
-				if(txn.Type == TransactionType.protocolReceipt) has_rec = true;
-				
-				if(txn.Type == TransactionType.report) 
-					doc_hash ^= Hash(txn.Documents);
-				if(txn.Type == TransactionType.protocol) 
-				{
-					doc_hash ^= Hash(txn.Documents);
-					sign_hash = Hash(txn.Signatures);
-				}
-			}
-			positive = (doc_hash == sign_hash);
-
-			if(has_rec) return positive ? DCStatus.Acc_Fin : DCStatus.Rej_Fin;
-			if(has_prot) return positive ? DCStatus.Acc_Sign : DCStatus.Rej_Sign;
-			if(has_ack) return DCStatus.Received;
-			if(has_rep) return DCStatus.Sent;
-			return DCStatus.Error;
-		}
-
-		DCType CalcType(IEnumerable<PfrTransaction> txns)
-		{
-			foreach(var txn in txns)
-			{
-				if(txn.Type == TransactionType.report)
-				{
-					foreach(var doc in txn.Documents)
-					{
-						switch(doc.Type)
-						{
-							case DocumentType.bunch: return DCType.adv;
-							case DocumentType.advBunch: return DCType.adv;
-							case DocumentType.dsvBunch: return DCType.dsv;
-							case DocumentType.dsvRegistry: return DCType.dsvReg;
-							case DocumentType.zpfBunch: return DCType.zpf;
-							case DocumentType.zvukBunch: return DCType.zvuk;
-						}
-					}
-				}
-			}
-			return DCType.adv;
-		}
-
-		string[] ReadHead(StreamReader file)
-		{
-			for(var row = file.ReadLine(); row != null; row = file.ReadLine())
-			{
-				var tuple = row.Split('\t');
-				if(tuple.Length >= 8 && file.ReadLine() == "") return tuple;
-			}
-			return null;
-		}
-
-		List<PfrDocument> ReadDocs(StreamReader file)
-		{
-			var docs = new List<PfrDocument>();
-			for(var row = file.ReadLine(); row != null; row = file.ReadLine())
-			{
-				if(row == "") return docs;
-				var tuple = row.Split('\t');
-				docs.Add(new PfrDocument(
-					new Guid(tuple[0]), 
-					(DocumentType)Enum.Parse(typeof(DocumentType), tuple[1]), 
-					Int32.Parse(tuple[2]),
-					tuple[3],
-					Int64.Parse(tuple[4]),
-					Int32.Parse(tuple[5])));
-			}
-			return null;
-		}
-
-		List<PfrSignature> ReadSigns(StreamReader file)
-		{
-			var signs = new List<PfrSignature>();
-			for(var row = file.ReadLine(); row != null; row = file.ReadLine())
-			{
-				if(row == "") return signs;
-				var tuple = row.Split('\t');
-				signs.Add(new PfrSignature(
-					new Guid(tuple[0]), 
-					new Guid(tuple[1]), 
-					(SignatureType)Enum.Parse(typeof(SignatureType), tuple[2]), 
-					Int64.Parse(tuple[3]),
-					Int32.Parse(tuple[4])));
-			}
-			return null;
-		}
-
-		bool ReadTail(StreamReader file)
-		{
-			return file.ReadLine() == "";
-		}
-		int Hash(IEnumerable<PfrDocument> docs)
-		{
-			int hash = 0;
-			foreach(var doc in docs) hash ^= doc.Id.GetHashCode();
-			return hash;
-		}
-
-		int Hash(IEnumerable<PfrSignature> signs)
-		{
-			int hash = 0;
-			foreach(var sign in signs) hash ^= sign.DocId.GetHashCode();
-			return hash;
+			return new DCInfo(from txn in new IndexReader().GetTransactions() where txn.DcId == dcId select txn);
 		}
 	}
 }

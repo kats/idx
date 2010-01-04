@@ -1,6 +1,0 @@
-namespace Kontur
-{
-	class IdxReader
-	{
-	}
-}

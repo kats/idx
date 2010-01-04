@@ -28,7 +28,7 @@ class kstream:
 
     def __init__(self, uri):
         "uri: kanso://<master-location>[:port]/<full-file-name>"
-        self.off = 0
+        self.offset = 0
         self.uri = uri
 
     def get_next_chunk_loc(self):
@@ -37,7 +37,7 @@ class kstream:
         if port == "": port = 22222
 
         conn = httplib.HTTPConnection(netloc, port)
-        params = urllib.urlencode({"method":"read", "offset":self.off})
+        params = urllib.urlencode({"method":"read", "offset":self.offset})
         conn.request("GET", "/" + path + "?" + params)
         resp = str(conn.getresponse().read()).split(";")
         return (resp[0], resp[1:])
@@ -48,10 +48,12 @@ class kstream:
             server = server.split(":")
             try:
                 conn = httplib.HTTPConnection(server[0], server[1].split(",")[1])
-                conn.request("GET", "/" + chunk_id)
+                params = urllib.urlencode({"offset":self.offset})
+                conn.request("GET", "/" + chunk_id + "?" + params)
                 return conn.getresponse()
             except: pass
 
-    def read(self):
+    def read(self, offset=0):
+        self.offset = offset
         (chunk_id, servers) = self.get_next_chunk_loc()
         return self.read_chunk(chunk_id, servers).read()

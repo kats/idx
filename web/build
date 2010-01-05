@@ -1,0 +1,1 @@
+gmcs *.cs -out:bin/web.dll -target:library -codepage:utf8 -r:System.Web

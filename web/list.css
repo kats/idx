@@ -1,0 +1,16 @@
+/* layout */
+#dcs {padding-top:20px}
+#dcs th {padding-bottom:3px; padding-left:20px}
+#dcs td {padding:7px 0; padding-left:20px}
+#pages {padding-top: 22px}
+#pages strong {padding-left:18px}
+#pages a {padding:0 5px}
+
+/* look & feel */
+#dcs th {color:#aaaaaa; text-align:left; font-weight:normal; font-size:13px}
+#dcs td.status {font-size:11px; white-space:nowrap}
+#dcs span.acc {color:green}
+#dcs span.rej {color:red}
+#dcs tbody tr:hover {background-color: #ebf0f6; cursor:hand}
+#pages {font-size:90%}
+#pages .no {color:#aaaaaa}

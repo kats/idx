@@ -1,0 +1,7 @@
+ul.tabs {overflow:hidden; zoom:1; margin:0; padding:0}
+ul.tabs li {float:left; list-style:none; margin:0;}
+ul.tabs li a {background:url(img/tab-bg.png) bottom repeat-x; font:Tahoma; padding:8px 20px; display:block}
+ul.tabs li.active a {color:#000; font-weight:bold; background:#fff}
+ul.tabs li.r-int {background:url(img/inter.png) center right no-repeat; padding-right:2px}
+ul.tabs li.r-tab {background:url(img/over-tab.png) center right no-repeat; padding-right:6px}
+ul.tabs li.r-cnv {background:url(img/over-canvas.png) center right no-repeat; padding-right:6px}

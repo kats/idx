@@ -1,44 +1,59 @@
 import httplib, urllib, string
+import re, random
 
-# TODO (kats): port
-def _parse_url(url):
-    scheme = netloc = path = query = "" 
+def open(uri):
+    return kstream(uri)
+
+def _parse_url(uri):
+    scheme = netloc = path = port = "" 
     # scheme
-    i = string.find(url, "://")
+    i = string.find(uri, "://")
     if i > 0:
-        scheme, url = string.lower(url[:i]), url[i+3:]
+        scheme, uri = string.lower(uri[:i]), uri[i+3:]
     # netloc
-    i = string.find(url, "/")
+    i = string.find(uri, "/")
     if i > 0:
-        netloc, url = string.lower(url[:i]), url[i+1:]
-    # path and query
-    i = string.find(url, '?')
-    if i >= 0:
-        url, query = url[:i], url[i+1:]
+        netloc, uri = string.lower(uri[:i]), uri[i+1:]
+    # port
+    i = string.find(netloc, ":")
+    if i > 0:
+        netloc, port = netloc[:i], netloc[i+1:]
     
-    return scheme, netloc, url, query
+    return scheme, netloc, port, uri
 
+# TODO (kats): DNS cache in module.
+# TODO (kats): isolate master response parsing code
 class kstream:
-    def __init__(self, filename):
-        self.off = 0
-        self.filename = filename
+    "Reads files from Kanso in lazy forward-only manner."
+
+    def __init__(self, uri):
+        "uri: kanso://<master-location>[:port]/<full-file-name>"
+        self.offset = 0
+        self.uri = uri
 
     def get_next_chunk_loc(self):
-        scheme, netloc, url, query = _parse_url(self.filename)
-        if scheme != "kanso": raise "wtf?"
-        conn = httplib.HTTPConnection(netloc, 22222)
-        params = urllib.urlencode({"method":"read", "offset":self.off})
-        conn.request("GET", "/" + url + "?" + params)
+        scheme, netloc, port, path = _parse_url(self.uri)
+        if scheme != "kanso": raise "unknown scheme, use kanso://"
+        if port == "": port = 22222
+
+        conn = httplib.HTTPConnection(netloc, port)
+        params = urllib.urlencode({"method":"read", "offset":self.offset})
+        conn.request("GET", "/" + path + "?" + params)
         resp = str(conn.getresponse().read()).split(";")
         return (resp[0], resp[1:])
 
-    # TODO (kats): random chunkserver
     def read_chunk(self, chunk_id, servers):
-        server = servers[0].split(":")
-        conn = httplib.HTTPConnection(server[0], server[1].split(",")[1])
-        conn.request("GET", "/" + chunk_id)
-        return conn.getresponse()
+        random.shuffle(servers)
+        for server in servers:
+            server = server.split(":")
+            try:
+                conn = httplib.HTTPConnection(server[0], server[1].split(",")[1])
+                params = urllib.urlencode({"offset":self.offset})
+                conn.request("GET", "/" + chunk_id + "?" + params)
+                return conn.getresponse()
+            except: pass
 
-    def read(self):
+    def read(self, offset=0):
+        self.offset = offset
         (chunk_id, servers) = self.get_next_chunk_loc()
         return self.read_chunk(chunk_id, servers).read()

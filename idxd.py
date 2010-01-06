@@ -11,7 +11,7 @@ from os import remove
 import os.path
 
 from threading import *
-import webserver as searchserver
+import searchserver
 
 stop_event = None
 
@@ -120,7 +120,6 @@ def __serve_forever(stop_event, t_search):
         c = httplib.HTTPConnection('127.0.0.1', config.IDX_WEBSERVER_PORT)
         c.request('STOP', '')
         t_search.join(10)
-    print 'exit serve_forever'
 
 def run():
     print 'Start serving idxd...'

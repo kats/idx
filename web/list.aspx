@@ -1,4 +1,7 @@
 <%@ Page Language="C#" CodeFile="list.aspx.cs" Inherits="Kontur.WebPFR.list" MasterPageFile="pfr.master" AutoEventWireup="True" %>
+<asp:Content ContentPlaceHolderId="head" runat="server">
+	<link rel="stylesheet" type="text/css" href="list.css" media="screen">
+</asp:Content>
 <asp:Content ContentPlaceHolderId="content" runat="server">
 	<table id="dcs" cellspacing="0" cellpadding="0">
 		<thead>

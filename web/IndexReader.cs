@@ -8,7 +8,7 @@ namespace Kontur.WebPFR
 	{
 		public IEnumerable<PfrTransaction> GetTransactions()
 		{
-			using(var file = new StreamReader("resp111"))
+			using(var file = new StreamReader("resp_e17"))
 			{
 				string[] head;
 				while((head = ReadHead(file)) != null)
@@ -52,7 +52,7 @@ namespace Kontur.WebPFR
 					new Guid(tuple[0]), 
 					(DocumentType)Enum.Parse(typeof(DocumentType), tuple[1]), 
 					Int32.Parse(tuple[2]),
-					tuple[3],
+					tuple[3].Trim(new char[]{'\"'}),
 					Int64.Parse(tuple[4]),
 					Int32.Parse(tuple[5])));
 			}

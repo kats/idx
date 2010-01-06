@@ -4,8 +4,7 @@
 	<head>
 		<link rel="stylesheet" type="text/css" href="tabs.css" media="screen">
 		<link rel="stylesheet" type="text/css" href="master.css" media="screen">
-		<link rel="stylesheet" type="text/css" href="list.css" media="screen">
-		<link rel="stylesheet" type="text/css" href="dc.css" media="screen">
+		<asp:ContentPlaceHolder id="head" runat="server"/>
 	</head>
 	<body>
 		<div id="head">

@@ -9,11 +9,18 @@ namespace Kontur.WebPFR
 	{
 		protected Guid dcId;
 		protected DCInfo dc;
-
+		protected reportview reportView;
+		protected ackview ackView;
+		protected protocolview protocolView;
+			
 		protected void Page_Load(object sender, EventArgs e)
 		{
 			dcId = new Guid(Request["dcId"]);
 			dc = GetDC(dcId);
+
+			reportView.DC = dc;
+			ackView.DC = dc;
+			protocolView.DC = dc;
 		}
 
 		protected string DescrStr()

@@ -17,6 +17,9 @@ namespace Kontur.WebPFR
 			Type = CalcType(txns);
 			Positive = CalcPositive(txns);
 			Progress = txns.Max(t => t.Type);
+			Report = txns.Where(t => t.Type == TransactionType.report).FirstOrDefault();
+			ReportAcknowledgement = txns.Where(t => t.Type == TransactionType.reportAcknowledgement).FirstOrDefault();
+			Protocol = txns.Where(t => t.Type == TransactionType.protocol).FirstOrDefault();
 		}
 
 		bool CalcPositive(IEnumerable<PfrTransaction> txns)
@@ -81,5 +84,8 @@ namespace Kontur.WebPFR
 		public DCType Type;
 		public TransactionType Progress {get; private set;}
 		public bool Positive {get; private set;}
+		public PfrTransaction Report {get; private set;}
+		public PfrTransaction ReportAcknowledgement {get; private set;}
+		public PfrTransaction Protocol {get; private set;}
 	}
 }

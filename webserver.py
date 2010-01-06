@@ -1,17 +1,20 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
-__PORT__ = 8092
-
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 import sys
 import re
 import uuid
 
 from IndexServer import IndexServer
+from threading import Thread
+import config
 
-if __name__ == '__main__':
-    IdxServer = IndexServer("index.sqlite")
+class SearchServer(HTTPServer):
+    def __init__(self,server_address, RequestHandlerClass, stop_event):
+        self.stop_event = stop_event
+        self.idx_server = IndexServer(config.IDX_FILENAME_STRINING)
+        HTTPServer.__init__(self, server_address, RequestHandlerClass)
 
 class IndexSearchRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -27,21 +30,40 @@ class IndexSearchRequestHandler(BaseHTTPRequestHandler):
             self.send_header('Content-Encoding', 'utf-8')
             self.end_headers()
 
-            for r in IdxServer.search(id.int):
+            for r in self.server.idx_server.search(id.int):
                 self.wfile.write(r.encode('utf-8'))
         except:
             self.send_error(404, "Unexpected error: %s\n%s\n%s" % sys.exc_info())
             raise
 
+    def do_STOP(self):
+        print 'Shutting down search server...'
+        t = Thread(target=shutdown_server, args=(self.server,))
+        t.daemon = True
+        t.start()
+    
+    def shutdown(self):
+        self.shutdown()
+        self.idx_server.stop()
+
+def shutdown_server(server):
+    server.shutdown()
+    server.stop_event.set()
+    print 'Search server is down.'
+
+def run(port, stop_event=None):
+    s = SearchServer(('', port), IndexSearchRequestHandler, stop_event)
+    print 'Search server started'
+    s.serve_forever()
+
 def main():
     try:
-        server = HTTPServer(('', __PORT__), IndexSearchRequestHandler)
-        print 'started httpserver...'
-        server.serve_forever()
+        s = SearchServer(('', config.IDX_WEBSERVER_PORT), IndexSearchRequestHandler)
+        print 'Search server started.'
+        s.serve_forever()
     except KeyboardInterrupt:
-        print '^C received, shutting down server'
-        server.socket.close()
+        s.socket.close()
+        print 'Search server is down.'
 
 if __name__ == '__main__':
     main()
-

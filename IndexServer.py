@@ -25,6 +25,9 @@ class IndexServer:
                 ((UUID(int=combineInt128(row[0], row[1])), UUID(int=combineInt128(row[2], row[3]))) + row[4:])
             yield r
 
+    def stop(self):
+        self.connection.close()
+
 # TODO: Add loging
 class IndexServerUpdater:
     def __init__(self, connectionString):

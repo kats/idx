@@ -4,6 +4,7 @@
 import config
 from time import sleep
 from sqlite3 import connect, OperationalError
+from struct import error
 
 from os import remove
 import os.path
@@ -118,6 +119,7 @@ def indexserver_run(kanso_filename, stop_event, end_long_run_update_event):
     from IndexServer import IndexServerUpdater
     from kstream import kstream
     from read_structs import read_structs
+    import sys
 
     updater = IndexServerUpdater(config.IDX_FILENAME)
     ks = kstream(config.KANSO_FILENAME)
@@ -131,9 +133,11 @@ def indexserver_run(kanso_filename, stop_event, end_long_run_update_event):
                     updater.insert_record((offset + inner_offset, txn))
                     if stop_event.isSet(): break
                 updater.commit()
-        except: 
-            raise
+        except error:
             pass
+        except:
+            print sys.exc_info()
+            raise
         trials = 0
         while True:
             try:

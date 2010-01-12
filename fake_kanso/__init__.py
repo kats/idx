@@ -1,6 +1,7 @@
 import chunkserver, master
 import os
 from threading import *
+import config
 
 __all__ = ["run", "append"]
 
@@ -14,13 +15,14 @@ def _run_master(port, cs_ports):
     ct.daemon = True
     ct.start()
 
-piece_size = 50*1024
-cur = "fake_kanso/chunks/4c44ed6d-4b46-4093-93f1-6b29a95e08ea"
+piece_size = config.FK_CHANK_SIZE
+cur = config.FK_DIR + '/' + config.FK_FILENAME
 full = cur + ".full"
 
-def run(master_port=22222, cs_count=3):
+def run(master_port=config.FK_MASTER_DEFAULT_PORT, cs_count=3):
     open(cur, "w+").close()
-    cs_ports = xrange(8001, 8001+cs_count)
+    cs_ports = xrange(config.FK_CS_PORT_RANGE_START, \
+            config.FK_CS_PORT_RANGE_START+cs_count)
     for port in cs_ports:
         _run_chunkserver(port)
     _run_master(master_port, cs_ports)

@@ -2,6 +2,7 @@ from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 from os import path
 from sys import argv
 from urlparse import urlparse, parse_qs
+import config
 
 class H(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -10,7 +11,7 @@ class H(BaseHTTPRequestHandler):
         offset = 0
         if "offset" in params: 
             offset = int(params["offset"][0])
-        chunk = "fake_kanso/chunks" + chunk
+        chunk = config.FK_DIR + chunk
         if not path.exists(chunk):
             self.send_response(404)
             self.end_headers()

@@ -8,7 +8,7 @@ import config
 #res = c.execute('select count(*) from pfrTransactions').fetchone()
 
 if __name__ == '__main__':
-    c = connect(config.IDX_FILENAME_STRINING)
+    c = connect(config.IDX_FILENAME)
     res = c.execute('PRAGMA integrity_check').fetchone()
     print res[0]
     print res[0] == 'ok'

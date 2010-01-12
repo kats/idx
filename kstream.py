@@ -1,5 +1,6 @@
 import httplib, urllib, string
 import re, random
+import config
 
 def open(uri):
     return kstream(uri)
@@ -33,7 +34,7 @@ class kstream:
     def __locate_next_chunk(self, offset):
         scheme, host, port, path = _parse_url(self.uri)
         if scheme != "kanso": raise "unknown scheme, use kanso://"
-        if port == "": port = 22222
+        if port == "": port = config.KANSO_MASTER_DEFAULT_PORT
 
         conn = httplib.HTTPConnection(host, port)
         params = urllib.urlencode({"method":"read", "offset":offset})

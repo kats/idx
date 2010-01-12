@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
-#TODO: Graceful shutdown for daemon threads
-
 import config
 from time import sleep
 from sqlite3 import connect, OperationalError
@@ -16,16 +14,16 @@ import searchserver
 stop_event = None
 
 def __create_index():
-    print "Trying to create DB in '%s'..." % config.IDX_FILENAME_STRINING
+    print "Trying to create DB in '%s'..." % config.IDX_FILENAME
     try:
-        if os.path.isfile(config.IDX_FILENAME_STRINING):
-            print "File '%s' is already exist. Trying to remove..." % config.IDX_FILENAME_STRINING
-            remove(config.IDX_FILENAME_STRINING)
+        if os.path.isfile(config.IDX_FILENAME):
+            print "File '%s' is already exist. Trying to remove..." % config.IDX_FILENAME
+            remove(config.IDX_FILENAME)
     except:
-        print "Cannot remove DB file '%s'. Please, close all connections to DB and try again." % config.IDX_FILENAME_STRINING
+        print "Cannot remove DB file '%s'. Please, close all connections to DB and try again." % config.IDX_FILENAME
         return False
 
-    c = connect(config.IDX_FILENAME_STRINING)
+    c = connect(config.IDX_FILENAME)
     #c.execute('PRAGMA page_size=32768;')
     c.execute('''
         create table state(offset integer)
@@ -56,7 +54,7 @@ def __create_index():
     return True
 
 def __validate_index():
-    c = connect(config.IDX_FILENAME_STRINING)
+    c = connect(config.IDX_FILENAME)
     res = c.execute('PRAGMA integrity_check').fetchone()
     if not res[0] == 'ok':
         c.close()
@@ -102,16 +100,69 @@ def __validate_index():
 def __restore_from_snapshot():
     return False
 
-def __start_search_daemon(port, stop_event):
-    t = Thread(target=searchserver.run, args=(port,stop_event))
+def __start_search_daemon(port, stop_event, end_long_run_update_event):
+    t = Thread(target=searchserver.run, args=(port,stop_event, end_long_run_update_event))
     t.daemon = True
     t.start()
     return t
 
-def __start_update_daemon():
-    pass
+def status():
+    c = connect(config.IDX_FILENAME)
+    i = c.execute('select max(offset) from state').fetchone()[0] 
+    print 'Current offset is %d' % (i if i <> None else 0)
+    i = c.execute('select count(*) from pfrTransactions').fetchone()[0] 
+    print 'Transactions in DB: %d' % (i if i <> None else 0)
+    c.close()
+
+def indexserver_run(kanso_filename, stop_event, end_long_run_update_event):
+    from IndexServer import IndexServerUpdater
+    from kstream import kstream
+    from read_structs import read_structs
+
+    ks = kstream
+    updater = IndexServerUpdater(config.IDX_FILENAME)
+    ks = kstream(config.KANSO_FILENAME)
+
+    print "Update server is started."
+    offset = updater.offset
+    while not stop_event.isSet():
+        try:
+            for inner_offset, txn in read_structs(ks.read(offset)):
+                updater.insert_record((offset + inner_offset, txn))
+                if stop_event.isSet(): break
+        except: 
+            pass
+        trials = 0
+        while True:
+            try:
+                updater.commit()
+                break
+            except OperationalError as e:
+                if trials > config.IDX_TRIALS:
+                    raise e
+                sleep(config.IDX_DB_BUSY_DELAY)
+
+        if stop_event.isSet(): break
+        offset = updater.offset
+        #if offset == updater.offset: <-- too dangerous
+        end_long_run_update_event.set()
+
+        print "Data file processed up to %d offset" % updater.offset
+        print "Sleep for %d seconds" % config.KANSO_READ_UPDATES_DELAY
+        #status()
+        sleep(config.KANSO_READ_UPDATES_DELAY)
+    updater.commit()
+    updater.stop()
+    print "Update server is down."
+
+def __start_update_daemon(kanso_filename, stop_event, end_long_run_update_event):
+    t = Thread(target=indexserver_run, args=(kanso_filename,stop_event,end_long_run_update_event))
+    t.daemon = True
+    t.start()
+    return t
+
 import httplib
-def __serve_forever(stop_event, t_search):
+def __serve_forever(stop_event, t_search, t_update):
     try:
         while not stop_event.isSet():
             sleep(1)
@@ -119,13 +170,14 @@ def __serve_forever(stop_event, t_search):
         print '^C received, shutting down server'
         c = httplib.HTTPConnection('127.0.0.1', config.IDX_WEBSERVER_PORT)
         c.request('STOP', '')
-        t_search.join(10)
+    t_search.join(10)
+    t_update.join(10)
 
 def run():
     print 'Start serving idxd...'
     print 'Verifying DB file...'
-    if not os.path.isfile(config.IDX_FILENAME_STRINING):
-        print "File '%s' does not exist  " %  config.IDX_FILENAME_STRINING
+    if not os.path.isfile(config.IDX_FILENAME):
+        print "File '%s' does not exist  " %  config.IDX_FILENAME
         __create_index()
 
     try:
@@ -143,9 +195,10 @@ def run():
         print "Please, close all connections to DB and try again."
         return
     stop_event = Event()
-    t_search = __start_search_daemon(config.IDX_WEBSERVER_PORT, stop_event)
-    __start_update_daemon()
-    __serve_forever(stop_event, t_search)
+    end_long_run_update_event = Event()
+    t_search = __start_search_daemon(config.IDX_WEBSERVER_PORT, stop_event, end_long_run_update_event)
+    t_update = __start_update_daemon(config.KANSO_FILENAME, stop_event, end_long_run_update_event)
+    __serve_forever(stop_event, t_search, t_update)
 
 if __name__ == '__main__':
     run()

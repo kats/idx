@@ -1,14 +1,18 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
-from sqlite3 import connect
+from sqlite3 import connect, OperationalError
 from uuid import UUID
 from intUtils import *
+import config
+from time import sleep
 
 class IndexServer:
     def __init__(self, connectionString):
-        self.connection = connect(connectionString)
-    def search(self, query):
+        self.__connectionString = connectionString
+        self.start()
+
+    def __get_results(self, query):
         cursor = self.connection.cursor()
         cursor.execute('''
             select orgId_hi, orgId_low, dcId_hi, dcId_low,
@@ -16,14 +20,36 @@ class IndexServer:
                 accountingYear, providerIdHash, correctionType, 
                 documents, signatures
             from pfrTransactions
-            where (orgId_hi = %d) and (orgId_low = %d)
-            order by dcId_hi, dcId_low, transactionTime''' % splitInt128(query))
-        resData = cursor.fetchall()
+                where (orgId_hi = %d) and (orgId_low = %d)
+                order by dcId_hi, dcId_low, transactionTime''' % splitInt128(query))
+        res = cursor.fetchall()
         cursor.close()
+        return res
+
+    def search(self, query):
+        trials = 0
+        hasNoResult = False
+        while True:
+            try:
+                resData = self.__get_results(query)
+                break
+            except OperationalError as e:
+                print "Get result error"
+                trials += 1
+                if trials >= config.IDX_TRIALS:
+                    "Has no more trials."
+                    raise e
+                print "Will try again after delay..."
+                sleep(config.IDX_DB_BUSY_DELAY)
+
         for row in resData:
             r = '%s\t%s\t%d\t%d\t"%s"\t%d\t%d\t%d\t\n\n%s\n%s\n\n' % \
-                ((UUID(int=combineInt128(row[0], row[1])), UUID(int=combineInt128(row[2], row[3]))) + row[4:])
+            ((UUID(int=combineInt128(row[0], row[1])), UUID(int=combineInt128(row[2], row[3]))) + row[4:])
             yield r
+
+    def start(self):
+        self.connection = connect(self.__connectionString)
+        self.connection.isolation_level = 'DEFERRED'
 
     def stop(self):
         self.connection.close()
@@ -33,11 +59,12 @@ class IndexServerUpdater:
     def __init__(self, connectionString):
         self.__connectionString = connectionString
         self.connection = connect(connectionString)
+        self.connection.isolation_level = 'DEFERRED'
         self.connection.execute('PRAGMA synchronous=OFF')
+        self.begin()
         self.__purge_state_table()
         self.pcounter = 0
         self.offset = self.__get_max_offset()
-        self.begin()
     def __format_signatures(self, signatures):
         res = ""
         for s in signatures:
@@ -82,13 +109,19 @@ class IndexServerUpdater:
         )
         self.offset = o
         self.pcounter += 1
-        # TODO: To config parameter
-        if self.pcounter == 50000:
+        if self.pcounter == config.IDX_ITEMS_PER_COMMIT:
             self.pcounter = 0
             self.commit()
             self.begin()
+
     def begin(self):
-        self.connection.execute('BEGIN TRANSACTION')
+        self.connection.execute('BEGIN DEFERRED TRANSACTION')
+        pass
+
     def commit(self):
         self.__insert_new_offset()
         self.connection.commit()
+
+    def stop(self):
+        self.commit()
+        self.connection.close()

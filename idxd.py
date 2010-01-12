@@ -119,7 +119,6 @@ def indexserver_run(kanso_filename, stop_event, end_long_run_update_event):
     from kstream import kstream
     from read_structs import read_structs
 
-    ks = kstream
     updater = IndexServerUpdater(config.IDX_FILENAME)
     ks = kstream(config.KANSO_FILENAME)
 
@@ -127,10 +126,13 @@ def indexserver_run(kanso_filename, stop_event, end_long_run_update_event):
     offset = updater.offset
     while not stop_event.isSet():
         try:
-            for inner_offset, txn in read_structs(ks.read(offset)):
-                updater.insert_record((offset + inner_offset, txn))
-                if stop_event.isSet(): break
+            for b in ks.read(offset):
+                for inner_offset, txn in read_structs(b):
+                    updater.insert_record((offset + inner_offset, txn))
+                    if stop_event.isSet(): break
+                updater.commit()
         except: 
+            raise
             pass
         trials = 0
         while True:

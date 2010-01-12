@@ -33,7 +33,7 @@ class kstream:
 
     def __locate_next_chunk(self, offset):
         scheme, host, port, path = _parse_url(self.uri)
-        if scheme != "kanso": raise "unknown scheme, use kanso://"
+        if scheme != "kanso": raise "unknown scheme, use kanso://"  # this raise doesn't work: TODO (kats)
         if port == "": port = config.KANSO_MASTER_DEFAULT_PORT
 
         conn = httplib.HTTPConnection(host, port)
@@ -61,6 +61,7 @@ class kstream:
     def read(self, offset=0):
         while True:
             (chunk_id, servers) = self.__locate_next_chunk(offset)
+            print chunk_id
             if not chunk_id:
                 break
             inner_offset = offset % (64*1024*1024)

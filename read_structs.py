@@ -59,6 +59,7 @@ def __read_txn(buf, off):
 
 __label = "===="
 def read_structs(buf, off=0):
+    print "a"
     o = off
     while o < len(buf):
         # this double-checking is slightly faster

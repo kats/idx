@@ -1,1 +1,0 @@
-gmcs *.cs -out:bin/web.dll -target:library -define:MONO -debug -codepage:utf8 -r:System.Web -r:Mono.Security

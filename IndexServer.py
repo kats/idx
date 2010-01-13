@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
+import config
 from sqlite3 import connect, OperationalError
 from uuid import UUID
 from intUtils import *
-import config
 from time import sleep
 
 class IndexServer:
@@ -125,3 +125,50 @@ class IndexServerUpdater:
     def stop(self):
         self.commit()
         self.connection.close()
+
+def run(kanso_filename, events):
+    from kstream import kstream
+    from read_structs import read_structs
+    from struct import error
+    import sys
+
+    updater = IndexServerUpdater(config.IDX_FILENAME)
+    ks = kstream(config.KANSO_FILENAME)
+
+    print "Update server is started."
+    offset = updater.offset
+    while not events.stop.isSet():
+        try:
+            for b in ks.read(offset):
+                for inner_offset, txn in read_structs(b):
+                    updater.insert_record((offset + inner_offset, txn))
+                    if events.stop.isSet(): break
+                updater.commit()
+        except error:
+            pass
+        except:
+            print sys.exc_info()
+            raise
+        trials = 0
+        while True:
+            try:
+                updater.commit()
+                break
+            except OperationalError as e:
+                if trials > config.IDX_TRIALS:
+                    raise e
+                sleep(config.IDX_DB_BUSY_DELAY)
+
+        if events.stop.isSet(): break
+        offset = updater.offset
+        #if offset == updater.offset: <-- too dangerous
+        events.endupdate.set()
+
+        print "Data file processed up to %d offset" % updater.offset
+        print "Sleep for %d seconds" % config.KANSO_READ_UPDATES_DELAY
+        #status()
+        sleep(config.KANSO_READ_UPDATES_DELAY)
+    updater.commit()
+    updater.stop()
+    print "Update server is down."
+

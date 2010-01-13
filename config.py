@@ -15,3 +15,11 @@ IDX_ITEMS_PER_COMMIT = 50000
 KANSO_MASTER_DEFAULT_PORT = 22222
 IDX_DB_BUSY_DELAY = 0.5 # in secs
 IDX_TRIALS = 3
+
+import logging.config
+logging.config.fileConfig('log.conf')
+
+DEBUG = True
+from sys import stderr
+def d_print(message):
+    if DEBUG: print >> stderr, message

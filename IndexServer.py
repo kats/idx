@@ -7,53 +7,6 @@ from uuid import UUID
 from intUtils import *
 from time import sleep
 
-class IndexServer:
-    def __init__(self, connectionString):
-        self.__connectionString = connectionString
-        self.start()
-
-    def __get_results(self, query):
-        cursor = self.connection.cursor()
-        cursor.execute('''
-            select orgId_hi, orgId_low, dcId_hi, dcId_low,
-                transactionTime, transactionType, upfrCode, 
-                accountingYear, providerIdHash, correctionType, 
-                documents, signatures
-            from pfrTransactions
-                where (orgId_hi = %d) and (orgId_low = %d)
-                order by dcId_hi, dcId_low, transactionTime''' % splitInt128(query))
-        res = cursor.fetchall()
-        cursor.close()
-        return res
-
-    def search(self, query):
-        trials = 0
-        hasNoResult = False
-        while True:
-            try:
-                resData = self.__get_results(query)
-                break
-            except OperationalError as e:
-                print "Get result error"
-                trials += 1
-                if trials >= config.IDX_TRIALS:
-                    "Has no more trials."
-                    raise e
-                print "Will try again after delay..."
-                sleep(config.IDX_DB_BUSY_DELAY)
-
-        for row in resData:
-            r = '%s\t%s\t%d\t%d\t"%s"\t%d\t%d\t%d\t\n\n%s\n%s\n\n' % \
-            ((UUID(int=combineInt128(row[0], row[1])), UUID(int=combineInt128(row[2], row[3]))) + row[4:])
-            yield r
-
-    def start(self):
-        self.connection = connect(self.__connectionString)
-        self.connection.isolation_level = 'DEFERRED'
-
-    def stop(self):
-        self.connection.close()
-
 # TODO: Add loging
 class IndexServerUpdater:
     def __init__(self, connectionString):

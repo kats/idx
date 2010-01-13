@@ -47,6 +47,8 @@ class PfrIndex:
             if c: c.close()
 
     def validate(self):
+        if not isfile(self.filename) and not self.create():
+            return False
         try:
             c = connect(self.filename)
             res = c.execute('PRAGMA integrity_check').fetchone()

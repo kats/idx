@@ -40,9 +40,9 @@ def __serve_forever(t_search, t_update, events):
 def run():
     print 'Start serving idxd...'
     idx = PfrIndex(config.IDX_FILENAME)
-    if not isfile(config.IDX_FILENAME):
-        idx.create()
-    if not idx.validate() and not idx.restore() and not idx.create():
+    if not idx.validate() and \
+            not (idx.restore() and idx.validate()) and \
+            not idx.create():
         print "Please, close all connections to DB and try again."
         return -1
 

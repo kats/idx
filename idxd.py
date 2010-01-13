@@ -19,7 +19,7 @@ def __start_search_daemon(port, events):
     return t
 
 def __start_update_daemon(kanso_filename, events):
-    t = Thread(target=indexserver.run, args=(kanso_filename, events))
+    t = Thread(target=indexserver.run, args=(kanso_filename,events))
     t.daemon = True
     t.start()
     return t

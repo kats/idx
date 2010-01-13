@@ -11,7 +11,7 @@ from sqlite3 import connect, OperationalError
 class PfrIndex:
     def __init__(self, filename):
         self.filename = filename
-        self.log = logging.getLogger("PFR_IDX")
+        self.log = logging.getLogger("pfridx")
 
     def create(self):
         try:

@@ -9,7 +9,6 @@ import IndexServer as indexserver
 
 from collections import namedtuple
 from httplib import HTTPConnection
-from os.path import isfile
 from threading import Thread, Event
 from time import sleep
 

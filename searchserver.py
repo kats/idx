@@ -11,18 +11,19 @@ from threading import Thread
 import config
 
 class SearchServer(HTTPServer):
-    def __init__(self,server_address, RequestHandlerClass, stop_event, end_long_run_update_event):
-        self.stop_event = stop_event
-        self.end_long_run_update_event = end_long_run_update_event 
+    def __init__(self,server_address, RequestHandlerClass, events):
+        self.events = events
         self.idx_server = IndexServer(config.IDX_FILENAME)
         HTTPServer.__init__(self, server_address, RequestHandlerClass)
-        if end_long_run_update_event and not end_long_run_update_event.isSet():
+        if events and events.endupdate and not events.endupdate.isSet():
             print "Waiting for long run index update to process search requests..."
 
 class IndexSearchRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
-            if not self.server.end_long_run_update_event.isSet():
+            if self.server.events and \
+                    self.server.events.endupdate and \
+                    not self.server.events.endupdate.isSet():
                 self.send_error(503, "Waiting for long run update...")
                 return
             id = re.search("orgId=([^&]*)", self.path)
@@ -54,11 +55,12 @@ class IndexSearchRequestHandler(BaseHTTPRequestHandler):
 
 def shutdown_server(server):
     server.shutdown()
-    server.stop_event.set()
+    if server.events and server.events.stop:
+        server.events.stop.set()
     print 'Search server is down.'
 
-def run(port, stop_event=None, end_long_run_update_event=None):
-    s = SearchServer(('', port), IndexSearchRequestHandler, stop_event, end_long_run_update_event)
+def run(port, events=None):
+    s = SearchServer(('', port), IndexSearchRequestHandler, events)
     print 'Search server started'
     s.serve_forever()
 

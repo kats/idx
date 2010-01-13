@@ -131,6 +131,7 @@ def run(kanso_filename, events):
     from read_structs import read_structs
     from struct import error
     import sys
+    from socket import error as s_error
 
     updater = IndexServerUpdater(config.IDX_FILENAME)
     ks = kstream(config.KANSO_FILENAME)
@@ -144,6 +145,9 @@ def run(kanso_filename, events):
                     updater.insert_record((offset + inner_offset, txn))
                     if events.stop.isSet(): break
                 updater.commit()
+        except s_error:
+            #log cannot connect to KANSO
+            pass
         except error:
             pass
         except:

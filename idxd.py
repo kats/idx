@@ -14,7 +14,7 @@ from threading import Thread, Event
 from time import sleep
 
 def __start_search_daemon(port, events):
-    t = Thread(target=searchserver.run, args=(port,events.stop,events.endupdate))
+    t = Thread(target=searchserver.run, args=(port,events))
     t.daemon = True
     t.start()
     return t
@@ -48,9 +48,9 @@ def run():
 
     Events = namedtuple("Events", "stop endupdate")
     events = Events(Event(), Event())
-    __serve_forever(
-            __start_search_daemon(config.IDX_WEBSERVER_PORT, events),
-            __start_update_daemon(config.KANSO_FILENAME, events),
+    __serve_forever( \
+            __start_search_daemon(config.IDX_WEBSERVER_PORT, events), \
+            __start_update_daemon(config.KANSO_FILENAME, events), \
             events)
 
 if __name__ == '__main__':

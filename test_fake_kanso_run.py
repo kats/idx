@@ -7,7 +7,7 @@ from time import sleep
 import fake_kanso
 import config
 
-SLEEP = 2
+SLEEP = 30
 
 if __name__ == '__main__':
     fake_kanso.run()

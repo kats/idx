@@ -1,3 +1,7 @@
 *.pyc
 *.swp
+*.log
 index.sqlite*
+config.py
+log.conf
+fake_kanso/chunks/*

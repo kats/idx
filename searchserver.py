@@ -8,11 +8,12 @@ from intUtils import splitInt128, combineInt128
 from re import search
 from sqlite3 import connect, OperationalError
 from sys import exc_info
+from time import sleep
 from threading import Thread
 from uuid import UUID
 
 from logging import getLogger
-log = getLogger('searchserver')
+log = getLogger('search')
 
 class IndexSearcher:
     def __init__(self, connectionString):
@@ -41,11 +42,11 @@ class IndexSearcher:
                 break
             except OperationalError as e:
                 d_print("Get result error")
-                log.warning('searchserver:search:%s' % s)
+                log.warning('search:%s' % e)
                 trials += 1
                 if trials >= config.IDX_TRIALS:
                     d_print("Has no more trials.")
-                    log.error('searchserver:search:fail')
+                    log.error('search:fail')
                     raise e
                 d_print("Will try again after delay...")
                 sleep(config.IDX_DB_BUSY_DELAY)
@@ -90,12 +91,12 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             for r in self.server.idx.search(id.int):
                 self.wfile.write(r.encode('utf-8'))
         except:
-            self.send_error(404, "Unexpected error: %s\n%s\n%s" % exc_info())
+            self.send_error(404, "Unexpected error: %s" % str(exc_info()[1]))
             raise
 
     def do_STOP(self):
         d_print('Shutting down search server...')
-        log.info('searchserver:stop')
+        log.info('stop')
         t = Thread(target=shutdown_server, args=(self.server,))
         t.daemon = True
         t.start()
@@ -105,25 +106,25 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
         self.idx.stop()
 
     def log_message(self, format, *args):
-        log.info('searchserver:%s - %s' % (format%args, self.address_string()))
+        log.info('%s\t%s' % (format%args, self.address_string()))
 
     def log_request(self, code='-', size='-'):
-        self.log_message('request:"%s" - %d', self.requestline, code)
+        self.log_message('request:"%s"\t%d', self.requestline, code)
 
     def log_error(self, format, *args):
-        self.log_message('error:%d - "%s"' % args)
+        self.log_message('error:%d\t"%s"' % args)
 
 def shutdown_server(server):
     server.shutdown()
     if server.events and server.events.stop:
         server.events.stop.set()
     d_print('Search server is down.')
-    log.info('searchserver:shutdown')
+    log.info('shutdown')
 
 def run(port, events=None):
     s = SearchServer(('', port), SearchRequestHandler, events)
     d_print('Search server started')
-    log.info('searchserver:run')
+    log.info('run')
     s.serve_forever()
 
 def main():

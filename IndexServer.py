@@ -2,10 +2,20 @@
 #-*- coding: utf-8 -*-
 
 import config
+from config import d_print
+from intUtils import splitInt128, toSignedInt64
+from socket import error as s_error
 from sqlite3 import connect, OperationalError
-from uuid import UUID
-from intUtils import *
+from struct import error
+from sys import exc_info
 from time import sleep
+from uuid import UUID
+
+from kstream import kstream
+from read_structs import read_structs
+
+from logging import getLogger
+log = getLogger('index')
 
 # TODO: Add loging
 class IndexServerUpdater:
@@ -16,49 +26,46 @@ class IndexServerUpdater:
         self.connection.execute('PRAGMA synchronous=OFF')
         self.begin()
         self.__purge_state_table()
-        self.pcounter = 0
+        self.connection.commit()
         self.offset = self.__get_max_offset()
+        self.pcounter = 0
+
+    def __get_max_offset(self):
+        o = self.connection.execute('select max(offset) from state').fetchone()[0]
+        return o if o <> None else 0
+
+    def __insert_new_offset(self):
+        self.connection.execute('insert into state(offset) values(?)', (self.offset,))
+
+    def __purge_state_table(self):
+        self.connection.execute('delete from state where offset not in (select max(offset) from state)')
+
+    def __format_documents(self, documents):
+        res = ""
+        for d in documents:
+            res += '%s\t%d\t%d\t"%s"\t%d\t%d\n' % \
+                (d.id, d.type, d.formKey, d.fileName.decode('utf-8'), d.kansoOffset, d.contentLen)
+        return res
+
     def __format_signatures(self, signatures):
         res = ""
         for s in signatures:
             res += '%s\t%s\t%d\t%d\t%d\n' % (s.id, s.docId, s.type, s.kansoOffset, s.contentLen)
         return res
-    def __format_documents(self, documents):
-        res = ""
-        for d in documents:
-            res += '%s\t%d\t%d\t"%s"\t%d\t%d\n' % (d.id, d.type, d.formKey, d.fileName.decode('utf-8'), d.kansoOffset, d.contentLen)
-        return res
-    def __get_max_offset(self):
-        o = self.connection.execute('select max(offset) from state').fetchone()[0]
-        return o if o <> None else 0
-    def __insert_new_offset(self):
-        self.connection.execute('insert into state(offset) values(?)', (self.offset,))
-    def __purge_state_table(self):
-        self.connection.execute('delete from state where offset not in (select max(offset) from state)').fetchall()
+
     def insert_record(self, rec):
         o, tnx = rec
         r, docs, signs = tnx
         self.connection.execute('''
            insert into pfrTransactions(
-           orgId_hi, orgId_low,
-            dcId_hi, dcId_low,
-            transactionTime,
-            transactionType,
-            upfrCode,
-            accountingYear,
-            providerIdHash,
-            correctionType,
-            documents,
-            signatures) values(?,?,?,?,?,?,?,?,?,?,?,?)''',
+            orgId_hi, orgId_low, dcId_hi, dcId_low,
+            transactionTime, transactionType,
+            upfrCode, accountingYear, providerIdHash, correctionType,
+            documents, signatures) values(?,?,?,?,?,?,?,?,?,?,?,?)''',
             splitInt128(r.orgId.int) + splitInt128(r.dcId.int) +
-            (toSignedInt64(r.time),
-                r.type,
-                r.upfrCode,
-                r.accYear,
-                r.provId,
-                r.corrType,
-                self.__format_documents(docs),
-                self.__format_signatures(signs))
+            (toSignedInt64(r.time), r.type,
+                r.upfrCode, r.accYear, r.provId, r.corrType,
+                self.__format_documents(docs), self.__format_signatures(signs))
         )
         self.offset = o
         self.pcounter += 1
@@ -69,7 +76,6 @@ class IndexServerUpdater:
 
     def begin(self):
         self.connection.execute('BEGIN DEFERRED TRANSACTION')
-        pass
 
     def commit(self):
         self.__insert_new_offset()
@@ -79,53 +85,58 @@ class IndexServerUpdater:
         self.commit()
         self.connection.close()
 
+def __try(fn, fromat, *args):
+    trials = 0
+    while True:
+        try:
+            fn(*args)
+            break
+        except OperationalError as e:
+            log.warning(format % str(e))
+            trials += 1
+            if trials > config.IDX_TRIALS:
+                raise e
+            sleep(config.IDX_DB_BUSY_DELAY)
+
 def run(kanso_filename, events):
-    from kstream import kstream
-    from read_structs import read_structs
-    from struct import error
-    import sys
-    from socket import error as s_error
+    d_print("Update server is started.")
+    log.info('start')
 
     updater = IndexServerUpdater(config.IDX_FILENAME)
     ks = kstream(config.KANSO_FILENAME)
-
-    print "Update server is started."
     offset = updater.offset
     while not events.stop.isSet():
+        events.endupdate.clear()
         try:
+            # TODO(kats): Resolve "transaction that cross two chanks border" problem
             for b in ks.read(offset):
-                for inner_offset, txn in read_structs(b):
-                    updater.insert_record((offset + inner_offset, txn))
-                    if events.stop.isSet(): break
-                updater.commit()
-        except s_error:
-            #log cannot connect to KANSO
-            pass
-        except error:
-            pass
+                __try(updater.begin, 'db-begin:%s')
+                try:
+                    for inner_offset, txn in read_structs(b):
+                        __try(updater.insert_record, 'db-insert:%s', (offset + inner_offset, txn))
+                        if events.stop.isSet(): break
+                except error, e:
+                    log.warning('read_structs:%s' % e)
+                __try(updater.commit, 'db-commit:%s')
+        except s_error, e:
+            log.warning('nokanso:%s' % e)
         except:
-            print sys.exc_info()
+            # TODO:log indexserver shutdown unexpectedly (email?)
+            d_print(exc_info())
+            log.critical('unexpected:%s' % str(exc_info()[1]))
+            events.endupdate.set()
+            updater.stop()
             raise
-        trials = 0
-        while True:
-            try:
-                updater.commit()
-                break
-            except OperationalError as e:
-                if trials > config.IDX_TRIALS:
-                    raise e
-                sleep(config.IDX_DB_BUSY_DELAY)
-
         if events.stop.isSet(): break
         offset = updater.offset
-        #if offset == updater.offset: <-- too dangerous
         events.endupdate.set()
+        d_print("Data file processed up to %d offset" % updater.offset)
+        d_print("Sleep for %d seconds" % config.KANSO_READ_UPDATES_DELAY)
+        log.info('update:offset:%s' % updater.offset)
+        if events.stop.wait(config.KANSO_READ_UPDATES_DELAY):
+            break
 
-        print "Data file processed up to %d offset" % updater.offset
-        print "Sleep for %d seconds" % config.KANSO_READ_UPDATES_DELAY
-        #status()
-        sleep(config.KANSO_READ_UPDATES_DELAY)
     updater.commit()
     updater.stop()
-    print "Update server is down."
-
+    d_print("Update server is down.")
+    log.info('shutdown')

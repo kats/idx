@@ -6,7 +6,7 @@ import logging
 
 from index import PfrIndex
 import searchserver
-import IndexServer as indexserver
+import indexserver
 
 from collections import namedtuple
 from httplib import HTTPConnection

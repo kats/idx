@@ -1,16 +1,27 @@
-webserver.py
-------------
-    Simple web server to porcess search requests. For now uses listen port 
-8092 on localhost. You can use __PORT__ at line 4 to redefine it.
+config.py.sample
+----------------
+    Configuration file sample copy it to config.py and edit to meet yout needs.
 
-IndexServer.py
---------------
-    Dummy implementation of the IndexServer.search() routine.
+fake_kanso/config.py.sample
+---------------------------
+    Configuration file for fake kanso. The same thing as config.py.sample
+
+log.conf.sample
+---------------
+    Sample logging configuration. Copy to log.conf and edit.
 
 createIndex.py
 --------------
-	Script to create SQLite index DB.
+	Script to create SQLite index DB and recreate current.
 
-fillFakeIndex.py
-----------------
-	Simplest example that fills index DB with fake data.
+test_fake_kanso_run.py
+----------------------
+    Runs fake_kaso
+
+idxd.py
+-------
+    Runs search server and update server for index.
+
+idxd.log
+--------
+    Default log file defined by log.conf.

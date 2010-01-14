@@ -1,5 +1,6 @@
 import httplib, urllib, string
 import re, random
+import config
 
 def open(uri):
     return kstream(uri)
@@ -28,32 +29,43 @@ class kstream:
 
     def __init__(self, uri):
         "uri: kanso://<master-location>[:port]/<full-file-name>"
-        self.offset = 0
         self.uri = uri
 
-    def get_next_chunk_loc(self):
-        scheme, netloc, port, path = _parse_url(self.uri)
-        if scheme != "kanso": raise "unknown scheme, use kanso://"
-        if port == "": port = 22222
+    def __locate_next_chunk(self, offset):
+        scheme, host, port, path = _parse_url(self.uri)
+        if scheme != "kanso": raise "unknown scheme, use kanso://"  # this raise doesn't work: TODO (kats)
+        if port == "": port = config.KANSO_MASTER_DEFAULT_PORT
 
-        conn = httplib.HTTPConnection(netloc, port)
-        params = urllib.urlencode({"method":"read", "offset":self.offset})
+        conn = httplib.HTTPConnection(host, port)
+        params = urllib.urlencode({"method":"read", "offset":offset})
         conn.request("GET", "/" + path + "?" + params)
-        resp = str(conn.getresponse().read()).split(";")
-        return (resp[0], resp[1:])
+        resp = conn.getresponse()
+        if resp.status != 200: # no more chunks
+            return (None, None)
+        s = str(resp.read()).split(";")
+        return (s[0], s[1:])
 
-    def read_chunk(self, chunk_id, servers):
+    def __read_chunk(self, offset, chunk_id, servers):
         random.shuffle(servers)
         for server in servers:
             server = server.split(":")
             try:
                 conn = httplib.HTTPConnection(server[0], server[1].split(",")[1])
-                params = urllib.urlencode({"offset":self.offset})
+                params = urllib.urlencode({"offset":offset})
                 conn.request("GET", "/" + chunk_id + "?" + params)
-                return conn.getresponse()
+                resp = conn.getresponse()
+                if resp.status == 200:
+                    return resp.read()
             except: pass
 
     def read(self, offset=0):
-        self.offset = offset
-        (chunk_id, servers) = self.get_next_chunk_loc()
-        return self.read_chunk(chunk_id, servers).read()
+        while True:
+            (chunk_id, servers) = self.__locate_next_chunk(offset)
+            print chunk_id
+            if not chunk_id:
+                break
+            inner_offset = offset % (64*1024*1024)
+            chunk = self.__read_chunk(inner_offset, chunk_id, servers)
+            if not chunk: break
+            offset += len(chunk)
+            yield chunk

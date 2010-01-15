@@ -98,13 +98,16 @@ def __try(fn, fromat, *args):
                 raise e
             sleep(config.IDX_DB_BUSY_DELAY)
 
-def run(kanso_filename, events):
+def run(kanso_filenames, events):
     d_print("Update server is started.")
     log.info('start')
 
     updater = IndexServerUpdater(config.IDX_FILENAME)
+
     ks = kstream(config.KANSO_FILENAME)
+    ks2 = kstream(config.KANSO_FILENAME2)    
     offset = updater.offset
+    offset2 = updater2.offset
     while not events.stop.isSet():
         events.endupdate.clear()
         try:
@@ -118,6 +121,15 @@ def run(kanso_filename, events):
                 except error, e:
                     log.warning('read_structs:%s' % e)
                 __try(updater.commit, 'db-commit:%s')
+            for b in ks2.read(offset2):
+                __try(updater2.begin, 'db-begin:%s')
+                try:
+                    for inner_offset, txn in read_structs(b):
+                        __try(updater2.insert_record, 'db-insert:%s', (offset2 + inner_offset, txn))
+                        if events.stop.isSet(): break
+                except error, e:
+                    log.warning('read_structs:%s' % e)
+                __try(updater2.commit, 'db-commit:%s') 
         except s_error, e:
             log.warning('nokanso:%s' % e)
         except:
@@ -126,9 +138,11 @@ def run(kanso_filename, events):
             log.critical('unexpected:%s' % str(exc_info()[1]))
             events.endupdate.set()
             updater.stop()
+            updater2.stop()
             raise
         if events.stop.isSet(): break
         offset = updater.offset
+        offset = updater2.offset
         events.endupdate.set()
         d_print("Data file processed up to %d offset" % updater.offset)
         d_print("Sleep for %d seconds" % config.KANSO_READ_UPDATES_DELAY)
@@ -136,7 +150,7 @@ def run(kanso_filename, events):
         if events.stop.wait(config.KANSO_READ_UPDATES_DELAY):
             break
 
-    updater.commit()
     updater.stop()
+    updater2.stop()
     d_print("Update server is down.")
     log.info('shutdown')

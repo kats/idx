@@ -21,8 +21,8 @@ def __start_search_daemon(port, events):
     t.start()
     return t
 
-def __start_update_daemon(kanso_filename, events):
-    t = Thread(target=indexserver.run, args=(kanso_filename,events))
+def __start_update_daemon(kanso_filenames, events):
+    t = Thread(target=indexserver.run, args=(kanso_filenames,events))
     t.daemon = True
     t.start()
     return t
@@ -54,7 +54,7 @@ def run():
     events = Events(Event(), Event())
     __serve_forever( \
             __start_search_daemon(config.IDX_WEBSERVER_PORT, events), \
-            __start_update_daemon(config.KANSO_FILENAME, events), \
+            __start_update_daemon((config.KANSO_FILENAME, config.KANSO_FILENAME2), events), \
             events)
 
 if __name__ == '__main__':

@@ -29,7 +29,7 @@ class IndexServerUpdater:
         self.__purge_state_table2()
         self.connection.commit()
         self.offset = self.__get_max_offset()
-        self.offset = self.__get_max_offset2()
+        self.offset2 = self.__get_max_offset2()
         self.pcounter = 0
 
     def __get_max_offset(self):

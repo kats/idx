@@ -16,7 +16,7 @@ class Snapshot:
     def __init__(self, srcDir, fileName, dstDir):
         if not isdir(srcDir):
             raise SnapshotError('Source Directory does not exists: %s' % srcDir)
-        self.__srcpath = join(srcDir + fileName)
+        self.__srcpath = join(srcDir, fileName)
         if not isfile(self.__srcpath):
             raise SnapshotError('Source file does not exists: "%s"' % self.__srcpath)
         self.__srcDir = srcDir

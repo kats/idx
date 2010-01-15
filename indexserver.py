@@ -178,8 +178,10 @@ def run(kanso_filenames, events):
         offset2 = updater.offset2
         events.endupdate.set()
         d_print("Data file processed up to %d offset" % updater.offset)
+        d_print("Data file2 processed up to %d offset" % updater.offset2)
         d_print("Sleep for %d seconds" % config.KANSO_READ_UPDATES_DELAY)
         log.info('update:offset:%s' % updater.offset)
+        log.info('update:offset2:%s' % updater.offset2)
         if events.stop.wait(config.KANSO_READ_UPDATES_DELAY):
             break
 

@@ -47,7 +47,7 @@ class PfrIndex:
             if c: c.close()
 
     def validate(self):
-        if not isfile(self.filename) and not self.create():
+        if not isfile(self.filename):
             return False
         try:
             c = connect(self.filename)

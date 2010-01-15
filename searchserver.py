@@ -91,7 +91,7 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             for r in self.server.idx.search(id.int):
                 self.wfile.write(r.encode('utf-8'))
         except:
-            self.send_error(404, "Unexpected error: %s" % str(exc_info()[1]))
+            self.send_error(500, "Unexpected error: %s" % str(exc_info()[1]))
             raise
 
     def do_STOP(self):

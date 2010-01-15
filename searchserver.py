@@ -79,7 +79,7 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
                 return
             id = search("orgId=([^&]*)", self.path)
             if not id:
-                self.send_error(404, "Bad request: %s" % self.path)
+                self.send_error(400, "Bad request: %s" % self.path)
                 return
             id = UUID(id.group(1))
 

@@ -26,6 +26,7 @@ class PfrIndex:
             c = connect(self.filename)
             #c.execute('PRAGMA page_size=32768;')
             c.execute('create table state(offset integer)')
+            c.execute('create table state2(offset integer)')
             # TODO(ibragim) remove id field
             c.execute('''
                 create table pfrTransactions(
@@ -79,9 +80,19 @@ class PfrIndex:
             res = c.execute('PRAGMA table_info(state)').fetchall()
             r = res and len(res) == 1 and \
                 res[0][1] == 'offset'
+
             if not r:
                 c.close()
                 self.log.warning('validate:fail:state')
+                return False
+
+            res = c.execute('PRAGMA table_info(state2)').fetchall()
+            r = res and len(res) == 1 and \
+                res[0][1] == 'offset'
+
+            if not r:
+                c.close()
+                self.log.warning('validate:fail:state2')
                 return False
 
             res = c.execute('PRAGMA index_info(pfrTransactions_index)').fetchall()

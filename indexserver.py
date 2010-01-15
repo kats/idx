@@ -26,8 +26,10 @@ class IndexServerUpdater:
         self.connection.execute('PRAGMA synchronous=OFF')
         self.begin()
         self.__purge_state_table()
+        self.__purge_state_table2()
         self.connection.commit()
         self.offset = self.__get_max_offset()
+        self.offset = self.__get_max_offset2()
         self.pcounter = 0
 
     def __get_max_offset(self):
@@ -39,6 +41,16 @@ class IndexServerUpdater:
 
     def __purge_state_table(self):
         self.connection.execute('delete from state where offset not in (select max(offset) from state)')
+
+    def __get_max_offset2(self):
+        o = self.connection.execute('select max(offset) from state2').fetchone()[0]
+        return o if o <> None else 0
+
+    def __insert_new_offset2(self):
+        self.connection.execute('insert into state2(offset) values(?)', (self.offset,))
+
+    def __purge_state_table2(self):
+        self.connection.execute('delete from state2 where offset not in (select max(offset) from state2)')
 
     def __format_documents(self, documents):
         res = ""
@@ -74,11 +86,33 @@ class IndexServerUpdater:
             self.commit()
             self.begin()
 
+    def insert_record2(self, rec):
+        o, tnx = rec
+        r, docs, signs = tnx
+        self.connection.execute('''
+           insert into pfrTransactions(
+            orgId_hi, orgId_low, dcId_hi, dcId_low,
+            transactionTime, transactionType,
+            upfrCode, accountingYear, providerIdHash, correctionType,
+            documents, signatures) values(?,?,?,?,?,?,?,?,?,?,?,?)''',
+            splitInt128(r.orgId.int) + splitInt128(r.dcId.int) +
+            (toSignedInt64(r.time), r.type,
+                r.upfrCode, r.accYear, r.provId, r.corrType,
+                self.__format_documents(docs), self.__format_signatures(signs))
+        )
+        self.offset2 = o
+        self.pcounter += 1
+        if self.pcounter == config.IDX_ITEMS_PER_COMMIT:
+            self.pcounter = 0
+            self.commit()
+            self.begin()
+
     def begin(self):
         self.connection.execute('BEGIN DEFERRED TRANSACTION')
 
     def commit(self):
         self.__insert_new_offset()
+        self.__insert_new_offset2()
         self.connection.commit()
 
     def stop(self):
@@ -107,7 +141,7 @@ def run(kanso_filenames, events):
     ks = kstream(config.KANSO_FILENAME)
     ks2 = kstream(config.KANSO_FILENAME2)    
     offset = updater.offset
-    offset2 = updater2.offset
+    offset2 = updater.offset2
     while not events.stop.isSet():
         events.endupdate.clear()
         try:
@@ -122,14 +156,14 @@ def run(kanso_filenames, events):
                     log.warning('read_structs:%s' % e)
                 __try(updater.commit, 'db-commit:%s')
             for b in ks2.read(offset2):
-                __try(updater2.begin, 'db-begin:%s')
+                __try(updater.begin, 'db-begin:%s')
                 try:
                     for inner_offset, txn in read_structs(b):
-                        __try(updater2.insert_record, 'db-insert:%s', (offset2 + inner_offset, txn))
+                        __try(updater.insert_record2, 'db-insert:%s', (offset2 + inner_offset, txn))
                         if events.stop.isSet(): break
                 except error, e:
                     log.warning('read_structs:%s' % e)
-                __try(updater2.commit, 'db-commit:%s') 
+                __try(updater.commit, 'db-commit:%s') 
         except s_error, e:
             log.warning('nokanso:%s' % e)
         except:
@@ -138,11 +172,10 @@ def run(kanso_filenames, events):
             log.critical('unexpected:%s' % str(exc_info()[1]))
             events.endupdate.set()
             updater.stop()
-            updater2.stop()
             raise
         if events.stop.isSet(): break
         offset = updater.offset
-        offset = updater2.offset
+        offset2 = updater.offset2
         events.endupdate.set()
         d_print("Data file processed up to %d offset" % updater.offset)
         d_print("Sleep for %d seconds" % config.KANSO_READ_UPDATES_DELAY)
@@ -151,6 +184,5 @@ def run(kanso_filenames, events):
             break
 
     updater.stop()
-    updater2.stop()
     d_print("Update server is down.")
     log.info('shutdown')

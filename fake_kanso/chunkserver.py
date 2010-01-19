@@ -19,7 +19,6 @@ class H(BaseHTTPRequestHandler):
             self.send_response(200)
             self.end_headers()
             f = open(chunk, "rb")
-            f.read(offset)
             self.wfile.write(f.read())
             f.close()
 

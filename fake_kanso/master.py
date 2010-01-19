@@ -1,9 +1,23 @@
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
+from urlparse import urlparse, parse_qs
+import os
 import config
 
 class H(BaseHTTPRequestHandler):
     _cs_ports=[]
     def do_GET(self):
+        (s, l, chunk, p, query, f) = urlparse(self.path)
+        params = parse_qs(query)
+        offset = 0
+        if "offset" in params: 
+            offset = int(params["offset"][0])
+
+        chunk = config.FK_DIR + "/" + config.FK_FILENAME
+        if offset >= os.stat(chunk).st_size:
+            self.send_response(400)
+            self.end_headers()
+            return
+
         self.send_response(200)
         self.end_headers()
         self.wfile.write(config.FK_FILENAME)

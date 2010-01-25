@@ -47,7 +47,7 @@ class IndexServerUpdater:
         return o if o <> None else 0
 
     def __insert_new_offset2(self):
-        self.connection.execute('insert into state2(offset) values(?)', (self.offset,))
+        self.connection.execute('insert into state2(offset) values(?)', (self.offset2,))
 
     def __purge_state_table2(self):
         self.connection.execute('delete from state2 where offset not in (select max(offset) from state2)')

@@ -1,26 +1,31 @@
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
-from os import path
-from sys import argv
 from urlparse import urlparse, parse_qs
-import config
+import config, files
 
 class H(BaseHTTPRequestHandler):
-    def do_GET(self):
-        (s, l, chunk, p, query, f) = urlparse(self.path)
+    def get_offset(self, query):
         params = parse_qs(query)
         offset = 0
         if "offset" in params: 
             offset = int(params["offset"][0])
-        chunk = config.FK_DIR + chunk
-        if not path.exists(chunk):
+        return offset
+
+    def do_GET(self):
+        (s, l, chunk_id, p, query, f) = urlparse(self.path)
+        chunk = files.find_chunk(chunk_id)
+
+        if not chunk
             self.send_response(404)
             self.end_headers()
-        else:
-            self.send_response(200)
-            self.end_headers()
-            f = open(chunk, "rb")
-            self.wfile.write(f.read())
-            f.close()
+            return
+
+        (file, offset) = chunk
+        inner_offset = get_offset(query)
+
+        self.send_response(200)
+        self.end_headers()
+        file.seek(offset + inner_offset)
+        self.wfile.write(file.read(const.CHUNK_SIZE - inner_offset))
 
 def run(port):
     server = HTTPServer(('', port), H)

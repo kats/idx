@@ -1,9 +1,8 @@
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 from urlparse import urlparse, parse_qs
-import os
-import config, const
+import config, const, files
 
-def _where_read(file_name, offset):
+def _where_read(path, offset):
     file = files.find_file(path)
     if not file: return
     (size, chunks) = file
@@ -23,7 +22,7 @@ class H(BaseHTTPRequestHandler):
 
     def do_GET(self):
         (s, l, path, p, query, f) = urlparse(self.path)
-        chunk_id = _where_read(file_name, self.get_offset(query))
+        chunk_id = _where_read(path, self.get_offset(query))
 
         if not chunk_id:
             self.send_response(400)
@@ -34,7 +33,8 @@ class H(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(chunk_id)
         for p in self._cs_ports:
-            self.wfile.write(";127.0.0.1:8897,%d,8896" % p)
+#            self.wfile.write(";127.0.0.1:8897,%d,8896" % p)
+            self.wfile.write(";10.0.1.4:8897,%d,8896" % p)
         self.wfile.write("\n")
 
 def run(port, cs_ports):

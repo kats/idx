@@ -56,7 +56,7 @@ class IndexServerUpdater:
         res = ""
         for d in documents:
             res += '%s\t%d\t%d\t"%s"\t%d\t%d\n' % \
-                (d.id, d.type, d.formKey, d.fileName.decode('utf-8'), d.kansoOffset, d.contentLen)
+                (d.id, d.type, d.formKey, d.fileName.decode('cp1251'), d.kansoOffset, d.contentLen)
         return res
 
     def __format_signatures(self, signatures):

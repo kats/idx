@@ -3,5 +3,6 @@
 *.log
 index.sqlite*
 config.py
+guids.txt
 log.conf
 fake_kanso/chunks/*

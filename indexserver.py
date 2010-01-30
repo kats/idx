@@ -17,7 +17,7 @@ from read_structs import read_structs
 from logging import getLogger
 log = getLogger('index')
 
-# TODO: Add loging
+# TODO: Add logging
 class IndexServerUpdater:
     def __init__(self, connectionString):
         self.__connectionString = connectionString
@@ -55,8 +55,8 @@ class IndexServerUpdater:
     def __format_documents(self, documents):
         res = ""
         for d in documents:
-            res += '%s\t%d\t%d\t"%s"\t%d\t%d\n' % \
-                (d.id, d.type, d.formKey, d.fileName.decode('cp1251'), d.kansoOffset, d.contentLen)
+            res += '%s\t%d\t%d\t%d\t"%s"\t%d\t%d\n' % \
+                (d.id, d.type, d.formKey, d.documentFlags, d.fileName.decode('cp1251'), d.kansoOffset, d.contentLen)
         return res
 
     def __format_signatures(self, signatures):

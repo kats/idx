@@ -15,6 +15,8 @@ IDX_ITEMS_PER_COMMIT = 50000
 KANSO_MASTER_DEFAULT_PORT = 22222
 IDX_DB_BUSY_DELAY = 0.5 # in secs
 IDX_TRIALS = 3
+IDX_SNAPSHOT_PERIOD = 2*60*60 # in secs
+IDX_SNAPSHOT_MAX = 3
 
 import logging.config
 logging.config.fileConfig('log.conf')

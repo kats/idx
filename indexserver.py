@@ -13,22 +13,33 @@ from uuid import UUID
 
 from kstream import kstream
 from read_structs import read_structs
+from snapshot import Snapshot
 
 from logging import getLogger
 log = getLogger('index')
+
+def trydb(fn, fromat, *args):
+    trials = 0
+    while True:
+        try:
+            fn(*args)
+            break
+        except OperationalError as e:
+            log.warning(format % str(e))
+            trials += 1
+            if trials > config.IDX_TRIALS:
+                raise e
+            sleep(config.IDX_DB_BUSY_DELAY)
 
 # TODO: Add loging
 class IndexServerUpdater:
     def __init__(self, connectionString):
         self.__connectionString = connectionString
-        self.connection = connect(connectionString)
-        self.connection.isolation_level = 'DEFERRED'
-        self.connection.execute('PRAGMA synchronous=OFF')
-        self.begin()
-        self.__purge_state_table()
-        self.connection.commit()
-        self.offset = self.__get_max_offset()
-        self.pcounter = 0
+        self.__snapshot = Snapshot('.', 'index.sqlite', './snapshots/')
+        self.start()
+
+    def __purge_state_table(self):
+        self.connection.execute('delete from state where offset not in (select max(offset) from state)')
 
     def __get_max_offset(self):
         o = self.connection.execute('select max(offset) from state').fetchone()[0]
@@ -37,8 +48,15 @@ class IndexServerUpdater:
     def __insert_new_offset(self):
         self.connection.execute('insert into state(offset) values(?)', (self.offset,))
 
-    def __purge_state_table(self):
-        self.connection.execute('delete from state where offset not in (select max(offset) from state)')
+    def start(self):
+        self.connection = connect(self.__connectionString)
+        self.connection.isolation_level = 'DEFERRED'
+        self.connection.execute('PRAGMA synchronous=OFF')
+        self.begin()
+        self.__purge_state_table()
+        self.connection.commit()
+        self.offset = self.__get_max_offset()
+        self.pcounter = 0
 
     def __format_documents(self, documents):
         res = ""
@@ -85,18 +103,19 @@ class IndexServerUpdater:
         self.commit()
         self.connection.close()
 
-def __try(fn, fromat, *args):
-    trials = 0
-    while True:
-        try:
-            fn(*args)
-            break
-        except OperationalError as e:
-            log.warning(format % str(e))
-            trials += 1
-            if trials > config.IDX_TRIALS:
-                raise e
-            sleep(config.IDX_DB_BUSY_DELAY)
+    def snapshot(self):
+        if self.__snapshot.isTime():
+            self.stop()
+            try:
+                self.__snapshot.create()
+                log.info('snapshot:ok')
+            except:
+                log.error('snapshot:error:%s' % str(exc_info()[1]))
+            finally:
+                trydb(self.start, 'updater:start:error:%s', self)
+
+def is_time_to_snapshot():
+    return False
 
 def run(kanso_filename, events):
     d_print("Update server is started.")
@@ -110,14 +129,14 @@ def run(kanso_filename, events):
         try:
             # TODO(kats): Resolve "transaction that cross two chanks border" problem
             for b in ks.read(offset):
-                __try(updater.begin, 'db-begin:%s')
+                trydb(updater.begin, 'db-begin:%s')
                 try:
                     for inner_offset, txn in read_structs(b):
-                        __try(updater.insert_record, 'db-insert:%s', (offset + inner_offset, txn))
+                        trydb(updater.insert_record, 'db-insert:%s', (offset + inner_offset, txn))
                         if events.stop.isSet(): break
                 except error, e:
                     log.warning('read_structs:%s' % e)
-                __try(updater.commit, 'db-commit:%s')
+                trydb(updater.commit, 'db-commit:%s')
         except s_error, e:
             log.warning('nokanso:%s' % e)
         except:
@@ -133,6 +152,9 @@ def run(kanso_filename, events):
         d_print("Data file processed up to %d offset" % updater.offset)
         d_print("Sleep for %d seconds" % config.KANSO_READ_UPDATES_DELAY)
         log.info('update:offset:%s' % updater.offset)
+
+        updater.snapshot()
+
         if events.stop.wait(config.KANSO_READ_UPDATES_DELAY):
             break
 

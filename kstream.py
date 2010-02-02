@@ -25,7 +25,7 @@ def _parse_url(uri):
 # TODO (kats): DNS cache in module.
 # TODO (kats): isolate master response parsing code
 class kstream:
-    "Reads files from Kanso in lazy forward-only manner."
+    "Reads files from Kanso in a lazy forward-only manner."
 
     def __init__(self, uri):
         "uri: kanso://<master-location>[:port]/<full-file-name>"

@@ -3,7 +3,7 @@ from collections import namedtuple
 from guid import UUID
 
 TxnHead = namedtuple("TxnHead", "orgId dcId time type upfrCode accYear provId corrType")
-Doc = namedtuple("Doc", "id type formKey fileName kansoOffset contentLen")
+Doc = namedtuple("Doc", "id type formKey documentFlags fileName kansoOffset contentLen")
 Sign = namedtuple("Sign", "id docId type kansoOffset contentLen")
 
 def __hash(bytes):
@@ -31,12 +31,12 @@ def __read_sign(bytes, off):
     return sign, off+calcsize(layout)
 
 def __read_doc(bytes, off):
-    layout1 = "=16siiB"
+    layout1 = "=16siiiB"
     d1 = unpack_from(layout1, bytes, off)
-    d2 = unpack_from("="+str(d1[3])+"s", bytes, off+calcsize(layout1))
-    d3 = unpack_from("=qi", bytes, off+calcsize(layout1)+d1[3])
-    doc = Doc(UUID(bytes_le=d1[0]), d1[1], d1[2], d2[0], d3[0], d3[1])
-    return doc, off+calcsize(layout1)+calcsize("=qi")+d1[3]
+    d2 = unpack_from("="+str(d1[4])+"s", bytes, off+calcsize(layout1))
+    d3 = unpack_from("=qi", bytes, off+calcsize(layout1)+d1[4])
+    doc = Doc(UUID(bytes_le=d1[0]), d1[1], d1[2], d1[3], d2[0], d3[0], d3[1])
+    return doc, off+calcsize(layout1)+calcsize("=qi")+d1[4]
 
 def __read_array(buf, off, read_fn):
     c = unpack_from("=i", buf, off)[0]
@@ -59,7 +59,6 @@ def __read_txn(buf, off):
 
 __label = "===="
 def read_structs(buf, off=0):
-    print "a"
     o = off
     while o < len(buf):
         # this double-checking is slightly faster

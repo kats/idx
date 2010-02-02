@@ -8,6 +8,7 @@ IDX_FILENAME = "index.sqlite"
 IDX_WEBSERVER_PORT = 8092
 # File URI with 'kanso://' namespace used to build index
 KANSO_FILENAME = "kanso://127.0.0.1/pfr/test/transactions"
+KANSO_FILENAME2 = "kanso://127.0.0.1/pfr/test/transactions2"
 # Each time KANSO_FILENAME EOF reached we'll wait for KANSO_READ_UPDATES_DELAY secs
 KANSO_READ_UPDATES_DELAY = 60 # in secs
 # Index commited each time KANSO_FILENAME EOF reached and each IDX_ITEMS_PER_COMMIT.

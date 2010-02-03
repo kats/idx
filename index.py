@@ -112,6 +112,3 @@ class PfrIndex:
             return False
         finally:
             if c: c.close()
-
-    def restore(self):
-        return False

@@ -62,7 +62,7 @@ class Snapshot:
                 if c > config.IDX_SNAPSHOT_MAX:
                     self.__remove(srcname)
 
-    def latestFilePath(self):
+    def __latestFilePath(self):
         names = listdir(self.__dstDir)
         names.sort()
         for i in xrange(len(names)-1, -1, -1):
@@ -71,7 +71,7 @@ class Snapshot:
                 return srcname
 
     def replaceWithLatest(self):
-        latest = self.latestFilePath()
+        latest = self.__latestFilePath()
         if not latest:
             return
         copyfile(latest, self.__srcpath)

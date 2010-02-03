@@ -4,6 +4,8 @@
 import config
 from config import d_print
 from intUtils import splitInt128, toSignedInt64
+
+from datetime import datetime
 from socket import error as s_error
 from sqlite3 import connect, OperationalError
 from struct import error
@@ -35,7 +37,6 @@ def trydb(fn, fromat, *args):
 class IndexServerUpdater:
     def __init__(self, connectionString):
         self.__connectionString = connectionString
-        self.__snapshot = Snapshot('.', 'index.sqlite', './snapshots/')
         self.start()
 
     def __purge_state_table(self):
@@ -57,7 +58,7 @@ class IndexServerUpdater:
         self.__purge_state_table2()
         self.connection.commit()
         self.offset = self.__get_max_offset()
-        self.offset = self.__get_max_offset2()
+        self.offset2 = self.__get_max_offset2()
         self.pcounter = 0
 
     def __get_max_offset2(self):
@@ -137,34 +138,26 @@ class IndexServerUpdater:
         self.commit()
         self.connection.close()
 
-    def snapshot(self):
-        if self.__snapshot.isTime():
-            self.stop()
-            try:
-                self.__snapshot.create()
-                log.info('snapshot:ok')
-            except:
-                log.error('snapshot:error:%s' % str(exc_info()[1]))
-            finally:
-                trydb(self.start, 'updater:start:error:%s', self)
-
-def is_time_to_snapshot():
-    return False
-
 def run(kanso_filenames, events):
     d_print("Update server is started.")
     log.info('start')
 
+    # DANGEROUS: Could crash updater
     updater = IndexServerUpdater(config.IDX_FILENAME)
 
     ks = kstream(config.KANSO_FILENAME)
     ks2 = kstream(config.KANSO_FILENAME2)    
     offset = updater.offset
     offset2 = updater.offset2
+    snapshot_manager = Snapshot('.', config.IDX_FILENAME, config.IDX_SNAPSHOT_DIR)
     while not events.stop.isSet():
+        start = datetime.now()
         events.endupdate.clear()
         try:
-            # TODO(kats): Resolve "transaction that cross two chanks border" problem
+            # Important note:
+            # ---------------
+            #    We guess that records (transactions in our case) stored in KANSO does not cross 
+            # KANSO chunk border and it is because of KANSO atomic writes.
             for b in ks.read(offset):
                 trydb(updater.begin, 'db-begin:%s')
                 try:
@@ -195,14 +188,30 @@ def run(kanso_filenames, events):
         if events.stop.isSet(): break
         offset = updater.offset
         offset2 = updater.offset2
+
+        # The fact is snapshot_manager changes index on start and stop (purges and commit),
+        # So, because of this fact we have to create snapshot during update phase and it is 
+        # an issue: we have to do not start search until snapshot completes.
+        if snapshot_manager.isTime():
+            start = datetime.now()
+            try:
+                trydb(updater.stop, 'updater:stop:error:%s')
+            except error, e:
+                continue
+            try:
+                snapshot_manager.create()
+                log.info('snapshot:ok:%s' % str(datetime.now() - start))
+            except:
+                log.error('snapshot:error:%s' % str(exc_info()[1]))
+            finally:
+                # DANGEROUS: Could crash updater
+                trydb(updater.start, 'updater:start:error:%s')       
+        
         events.endupdate.set()
-        d_print("Data file processed up to %d offset" % updater.offset)
-        d_print("Data file2 processed up to %d offset" % updater.offset2)
-        d_print("Sleep for %d seconds" % config.KANSO_READ_UPDATES_DELAY)
+        log.info('update:completed:%s' % str(datetime.now() - start))
+        d_print("update:Sleep for %d seconds" % config.KANSO_READ_UPDATES_DELAY)
         log.info('update:offset:%s' % updater.offset)
         log.info('update:offset2:%s' % updater.offset2)
-        
-        updater.snapshot()
 
         if events.stop.wait(config.KANSO_READ_UPDATES_DELAY):
             break

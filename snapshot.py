@@ -12,6 +12,9 @@ from time import time
 
 from index import PfrIndex
 
+from logging import getLogger
+log = getLogger('snapshot')
+
 def getFileSuffix(dt):
     return dt.strftime('%Y-%m-%d-%H-%M-%S-%f')
 
@@ -41,9 +44,10 @@ class Snapshot:
         copyfile(self.__fileName, dst)
         res = PfrIndex(dst).validate()
         if not res:
-            self.remove(dst)
+            self.__remove(dst)
         else:
             self.__t = int(time())
+            log.info('created:"%s"' % dst)
         self.__cleanup()
         return res
 
@@ -56,7 +60,7 @@ class Snapshot:
             if self.__snapshotFile.match(names[i]):
                 c += 1
                 if c > config.IDX_SNAPSHOT_MAX:
-                    self.remove(srcname)
+                    self.__remove(srcname)
 
     def latestFilePath(self):
         names = listdir(self.__dstDir)
@@ -73,9 +77,10 @@ class Snapshot:
         copyfile(latest, self.__srcpath)
         return latest
 
-    def remove(snapshotName):
+    def __remove(self, snapshotName):
         if isfile(snapshotName):
             remove(snapshotName)
+            log.info('removed:"%s"' % snapshotName)
 
     def isTime(self):
         return int(time()) > self.__t

@@ -21,12 +21,10 @@ def getFileSuffix(dt):
 class SnapshotError(Exception): pass
 
 class Snapshot:
-    def __init__(self, srcDir, fileName, dstDir):
+    def __init__(self, srcDir='.', fileName=config.IDX_FILENAME, dstDir=config.IDX_SNAPSHOT_DIR):
         if not isdir(srcDir):
             raise SnapshotError('Source Directory does not exists: %s' % srcDir)
         self.__srcpath = join(srcDir, fileName)
-        if not isfile(self.__srcpath):
-            raise SnapshotError('Source file does not exists: "%s"' % self.__srcpath)
         self.__srcDir = srcDir
         self.__fileName = fileName
         self.__dstDir = dstDir
@@ -40,6 +38,8 @@ class Snapshot:
             getFileSuffix(datetime.now())
 
     def create(self):
+        if not isfile(self.__srcpath):
+            raise SnapshotError('Source file does not exists: "%s"' % self.__srcpath)
         dst = self.__dstFileName()
         copyfile(self.__fileName, dst)
         res = PfrIndex(dst).validate()
@@ -62,21 +62,6 @@ class Snapshot:
                 if c > config.IDX_SNAPSHOT_MAX:
                     self.__remove(srcname)
 
-    def __latestFilePath(self):
-        names = listdir(self.__dstDir)
-        names.sort()
-        for i in xrange(len(names)-1, -1, -1):
-            srcname = join(self.__dstDir, names[i])
-            if self.__snapshotFile.match(names[i]):
-                return srcname
-
-    def replaceWithLatest(self):
-        latest = self.__latestFilePath()
-        if not latest:
-            return
-        copyfile(latest, self.__srcpath)
-        return latest
-
     def __remove(self, snapshotName):
         if isfile(snapshotName):
             remove(snapshotName)
@@ -85,3 +70,17 @@ class Snapshot:
     def isTime(self):
         return int(time()) > self.__t
 
+    def restore(self, IndexClass):
+        names = listdir(self.__dstDir)
+        names.sort()
+        for i in xrange(len(names)-1, -1, -1):
+            n = join(self.__dstDir, names[i])
+            if self.__snapshotFile.match(names[i]):
+                idx = IndexClass(n)
+                if idx.validate():
+                    if isfile(self.__srcpath): self.__remove(self.__srcpath)
+                    if isfile(n):
+                        copyfile(n, self.__srcpath)
+                        log.info('restored:%s' % n)
+                        return True
+        return False

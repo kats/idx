@@ -46,7 +46,7 @@ class Snapshot:
         if not res:
             self.__remove(dst)
         else:
-            self.__t = int(time())
+            self.__t = int(time()) + config.IDX_SNAPSHOT_PERIOD
             log.info('created:"%s"' % dst)
         self.__cleanup()
         return res

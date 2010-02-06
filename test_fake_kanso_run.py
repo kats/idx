@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
-import fake_kanso, config
+import fake_kanso
 
 if __name__ == '__main__':
     fake_kanso.add_file('test_data/transactions', '/transactions')

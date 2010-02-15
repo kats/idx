@@ -1,7 +1,6 @@
-#!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
-# File name to strore index DB.
+# File name to strore index DB (not path!).
 IDX_FILENAME = "index.sqlite"
 # Search server port.
 # The '?orgId=<GUID>' param expected, where <GUID> is the string uesd in UUID.uuid(string) constructor.
@@ -16,6 +15,13 @@ IDX_ITEMS_PER_COMMIT = 50000
 KANSO_MASTER_DEFAULT_PORT = 22222
 IDX_DB_BUSY_DELAY = 0.5 # in secs
 IDX_TRIALS = 3
+
+IDX_SNAPSHOT_DIR = './snapshots/'
+# Snapshot will be created just after successfully updated index, so expected period has to be greater or
+# equal then KANSO_READ_UPDATES_DELAY
+IDX_SNAPSHOT_PERIOD = 2*60 # in secs
+# Snapshots older then IDX_SNAPSHOT_MAX latest will be deleted
+IDX_SNAPSHOT_MAX = 3
 
 import logging.config
 logging.config.fileConfig('log.conf')

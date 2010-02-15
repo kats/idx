@@ -33,8 +33,7 @@ class H(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(chunk_id)
         for p in self._cs_ports:
-#            self.wfile.write(";127.0.0.1:8897,%d,8896" % p)
-            self.wfile.write(";10.0.1.4:8897,%d,8896" % p)
+            self.wfile.write(";127.0.0.1:8897,%d,8896" % p)
         self.wfile.write("\n")
 
 def run(port, cs_ports):

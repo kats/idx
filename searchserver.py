@@ -67,7 +67,10 @@ class SearchServer(HTTPServer):
     def __init__(self,server_address, RequestHandlerClass, events):
         self.events = events
         self.idx = IndexSearcher(config.IDX_FILENAME)
-        HTTPServer.__init__(self, server_address, RequestHandlerClass)
+        HTTPServer.__init__(self, server_address, RequestHandlerClass, bind_and_activate=False)
+        self.request_queue_size = 500
+        self.server_bind()
+        self.server_activate()
 
 class SearchRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):

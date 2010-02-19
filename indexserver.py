@@ -166,7 +166,6 @@ def run(kanso_filenames, events):
                         if events.stop.isSet(): break
                 except error, e:
                     log.warning('read_structs:%s' % e)
-                updater.offset = offset + inner_offset
                 trydb(updater.commit, 'db-commit:%s')
                 offset = updater.offset
             for b in ks2.read(offset2):
@@ -177,7 +176,6 @@ def run(kanso_filenames, events):
                         if events.stop.isSet(): break
                 except error, e:
                     log.warning('read_structs:%s' % e)
-                updater.offset2 = offset2 + inner_offset
                 trydb(updater.commit, 'db-commit:%s') 
                 offset2 = updater.offset2
         except s_error, e:
